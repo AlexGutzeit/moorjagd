@@ -1,0 +1,33 @@
+[Unit]
+Description=Moorjagd: Bestenliste und Mehrspieler
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# MOORJAGD_ADRESSE, MOORJAGD_VERTRAUT, MOORJAGD_HERKUNFT usw., Vorlage: moorjagd-strecken.env.beispiel
+EnvironmentFile=-/etc/default/moorjagd-strecken
+ExecStart=/usr/bin/python3 -I /usr/local/lib/moorjagd/moorjagd-strecken.py
+Restart=always
+# Die Lauschadresse ist beim Hochfahren evtl. noch nicht da
+RestartSec=5
+DynamicUser=yes
+StateDirectory=moorjagd
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryMax=128M
+# Mehrspieler: je Verbindung ein Lese- und ein Schreibfaden, höchstens 60 Verbindungen
+TasksMax=200
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+spiel.example.org {
+	handle /api/moorjagd/* {
+		request_body {
+			max_size 2KB
+		}
+		reverse_proxy 127.0.0.1:8097
+	}
+	handle {
+		file_server * {
+			root /srv
+		}
+	}
+}

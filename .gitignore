@@ -1,0 +1,10 @@
+# Bauergebnis (python3 baue.py)
+dist/
+
+# Reste der Prüfläufe
+ffprofil-*/
+seite-*/
+zustand-*/
+/*.png
+
+__pycache__/

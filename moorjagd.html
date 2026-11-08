@@ -1,0 +1,2203 @@
+<title>Moorjagd</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@500;700;800&family=Grenze:wght@400;500;600;700&display=swap">
+<style>
+/* Aufbau: das Panorama füllt immer den ganzen Rahmen, alles andere schwebt als Jagdtafel darüber. Bewusst nur ein Erscheinungsbild. */
+:root {
+  --torf: #1b1f13;
+  --torf-glas: rgba(27, 31, 19, .84);
+  --moos: #39421f;
+  --heide: #a678ad;
+  --messing: #dcb65f;
+  --papier: #f6edd5;
+  --signal: #ff6a13;
+  --blass: #c6bfa6;
+  --schrift-titel: "Grenze Gotisch", "Palatino Linotype", Georgia, serif;
+  --schrift-text: "Grenze", "Trebuchet MS", Verdana, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; background: var(--torf); color: var(--papier); overscroll-behavior: none; overflow: hidden; }
+body { font: 500 17px/1.35 var(--schrift-text); }
+#spiel { position: relative; width: 100%; height: 100%; overflow: hidden; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+#bild { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#spiel.jagd #bild { cursor: none; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--papier); outline-offset: 2px; }
+
+#hud {
+  position: absolute; top: 0; left: 0; display: flex; gap: 8px; pointer-events: none;
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wert { display: grid; background: var(--torf-glas); border-left: 3px solid var(--messing); padding: 3px 12px 4px 9px; min-width: 76px; }
+.wert span { font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--blass); }
+.wert b { font: 800 34px/1 var(--schrift-titel); font-variant-numeric: tabular-nums; }
+.wert.knapp { border-color: var(--signal); }
+.wert.knapp b { color: var(--signal); }
+
+#knoepfe {
+  position: absolute; top: 10px; z-index: 5; display: flex; gap: 6px;
+  right: max(16px, env(safe-area-inset-right, 0px));
+}
+.rund { width: 44px; height: 44px; display: grid; place-items: center; background: var(--torf-glas); border: 1px solid rgba(220, 182, 95, .55); cursor: pointer; padding: 0; }
+.rund:hover { border-color: var(--messing); background: var(--torf); }
+.rund svg { width: 22px; height: 22px; fill: none; stroke: var(--papier); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+#laden {
+  position: absolute; display: grid; gap: 5px; justify-items: center; cursor: pointer;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 12px 7px; background: var(--torf-glas); border: 2px solid var(--messing); touch-action: manipulation;
+}
+#patronen { display: flex; gap: 4px; }
+.huelse { width: 12px; height: 34px; display: block; background: linear-gradient(180deg, #d7352a 0 66%, #e7c063 66% 100%); box-shadow: inset 2px 0 0 rgba(255, 255, 255, .28), inset -2px 0 0 rgba(0, 0, 0, .25); transition: opacity .12s, transform .12s; }
+.huelse.leer { opacity: .16; transform: translateY(3px); }
+#laden small { font-size: 13px; letter-spacing: .07em; text-transform: uppercase; color: var(--blass); }
+#laden.mahnt { border-color: var(--signal); background: var(--signal); animation: mahnen .5s ease-in-out infinite alternate; }
+#laden.mahnt small { color: var(--torf); font-weight: 700; }
+@keyframes mahnen { to { transform: scale(1.07); } }
+
+.tafel {
+  position: absolute; inset: 0; z-index: 3; overflow-y: auto; touch-action: pan-y; display: grid; align-items: safe center;
+  padding-block: 62px 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: linear-gradient(90deg, rgba(20, 23, 13, .86), rgba(20, 23, 13, .58) 62%, rgba(20, 23, 13, .3));
+  user-select: text; -webkit-user-select: text;
+}
+.spalten { width: 100%; max-width: 1020px; margin-inline: auto; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px 44px; align-items: start; }
+.spalten > * { min-width: 0; }
+@media (max-width: 720px) { .spalten { grid-template-columns: minmax(0, 1fr); } }
+h1, h2 { font-family: var(--schrift-titel); margin: 0; text-wrap: balance; font-weight: 800; }
+h1 { font-size: clamp(58px, 11vmin + 3vw, 132px); line-height: .88; color: var(--papier); text-shadow: 0 3px 0 rgba(0, 0, 0, .45); }
+h2 { font-size: 27px; line-height: 1.1; color: var(--messing); }
+.unterzeile { font-size: clamp(18px, 1.2vmin + 13px, 24px); margin: 10px 0 16px; max-width: 34ch; }
+.auftakt { background: var(--signal); color: var(--torf); border: 0; font: 800 28px/1 var(--schrift-titel); padding: 13px 28px 15px; cursor: pointer; box-shadow: 0 5px 0 #a83f06; touch-action: manipulation; }
+.auftakt:hover { background: #ff7d33; }
+.auftakt:active { transform: translateY(4px); box-shadow: 0 1px 0 #a83f06; }
+.zweit { background: none; border: 1px solid var(--blass); padding: 11px 16px; cursor: pointer; touch-action: manipulation; }
+.zweit:hover { border-color: var(--papier); }
+.steuerung { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 14px; margin: 18px 0 0; font-size: 16px; }
+.steuerung dt { font-weight: 700; color: var(--messing); }
+.steuerung dd { margin: 0; }
+.nur-finger { display: none; }
+@media (pointer: coarse) { .nur-maus { display: none; } .nur-finger { display: grid; } }
+.preise { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 12px 0 8px; }
+.preis { display: flex; align-items: center; gap: 6px; }
+.preis canvas { width: 46px; height: 46px; }
+.preis b { font: 800 26px/1 var(--schrift-titel); }
+.preise-text { font-size: 15px; color: var(--blass); margin: 0; max-width: 48ch; }
+.preise-text b { color: var(--papier); font-weight: 600; }
+.liste { background: var(--torf-glas); border-top: 3px solid var(--messing); padding: 12px 14px; }
+#strecken { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 1px; }
+.eintrag { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 2px 0; border-bottom: 1px solid rgba(198, 191, 166, .18); font-variant-numeric: tabular-nums; }
+.eintrag i { font-style: normal; color: var(--blass); }
+.eintrag span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.eintrag b { font-weight: 700; }
+.eintrag.neu { color: var(--signal); }
+.liste-leer { color: var(--blass); margin: 8px 0 0; }
+.quelle { font-size: 14px; color: var(--blass); margin: 8px 0 0; }
+.ergebnis { font: 800 clamp(64px, 12vmin + 2vw, 120px)/.92 var(--schrift-titel); font-variant-numeric: tabular-nums; }
+.eyebrow { font-size: 14px; letter-spacing: .09em; text-transform: uppercase; color: var(--messing); margin: 0 0 4px; }
+.urteil { font: 700 28px/1.1 var(--schrift-titel); margin: 2px 0 12px; }
+table { border-collapse: collapse; width: 100%; max-width: 430px; font-variant-numeric: tabular-nums; }
+td { padding: 2px 0; border-bottom: 1px solid rgba(198, 191, 166, .18); }
+td:nth-child(n+2) { text-align: right; padding-left: 14px; white-space: nowrap; }
+tr.summe td { font-weight: 700; border-bottom: 0; color: var(--messing); }
+.reihe { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
+#eintragen { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+#name { flex: 1 1 130px; min-width: 0; padding: 9px 10px; background: rgba(0, 0, 0, .35); border: 1px solid var(--blass); font-size: 17px; }
+#eintragen-hinweis { flex-basis: 100%; font-size: 14px; color: var(--blass); margin: 0; min-height: 1em; }
+/* Mehrspieler */
+.h1-klein { font-size: clamp(44px, 7vmin + 2vw, 84px); }
+.feld { display: grid; gap: 4px; margin: 0 0 12px; max-width: 360px; }
+.feld span { font-size: 13px; letter-spacing: .07em; text-transform: uppercase; color: var(--blass); }
+.eingabe { min-width: 0; padding: 9px 10px; background: rgba(0, 0, 0, .35); border: 1px solid var(--blass); font-size: 17px; }
+#raum-neu { display: flex; flex-wrap: wrap; gap: 10px; max-width: 540px; align-items: center; }
+#raum-neu .eingabe { flex: 1 1 210px; }
+.raumliste { list-style: none; margin: 8px 0 0; padding: 0; display: grid; }
+.raumliste li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(198, 191, 166, .18); }
+.raumliste.ohne-symbol li { grid-template-columns: minmax(0, 1fr) auto; }
+.raumliste .name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.raumliste small { display: block; color: var(--blass); font-size: 14px; }
+.knoepfchen { display: flex; flex-wrap: wrap; gap: 6px; justify-content: end; }
+.zweit.klein { padding: 7px 11px; font-size: 15px; }
+.auftakt.klein { font-size: 19px; padding: 7px 12px 9px; box-shadow: 0 3px 0 #a83f06; }
+button:disabled { opacity: .45; cursor: default; }
+.kreuz { width: 26px; height: 26px; display: block; }
+.marke { display: inline-block; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--torf); background: var(--messing); padding: 1px 6px; margin-left: 6px; vertical-align: 2px; font-weight: 700; }
+.marke.weg { background: var(--blass); }
+#anfrage-box { border-top-color: var(--signal); margin-bottom: 14px; }
+#anfrage-box p { margin: 6px 0 10px; }
+#countdown { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; pointer-events: none; font: 800 clamp(120px, 36vmin, 320px)/1 var(--schrift-titel); color: var(--papier); text-shadow: 0 6px 0 rgba(0, 0, 0, .45), 0 0 46px rgba(0, 0, 0, .4); }
+#countdown.null { color: var(--signal); }
+#rangliste {
+  position: absolute; z-index: 2; top: 72px; list-style: none; margin: 0; padding: 4px 10px 5px 8px; pointer-events: none;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  background: var(--torf-glas); border-left: 3px solid var(--messing); font-size: 15px; display: grid; gap: 1px; width: min(190px, 44vw);
+}
+#rangliste li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 7px; align-items: center; font-variant-numeric: tabular-nums; }
+#rangliste span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#rangliste li.ich { font-weight: 700; }
+.farbpunkt { display: inline-block; width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 1.5px rgba(0, 0, 0, .6); }
+#meldung {
+  position: absolute; z-index: 6; top: 64px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px);
+  background: var(--torf); border-left: 3px solid var(--signal); padding: 8px 14px; box-shadow: 0 4px 14px rgba(0, 0, 0, .4);
+}
+.podest { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 8px; max-width: 460px; margin: 16px 0 4px; }
+.platz { display: grid; justify-items: center; gap: 3px; text-align: center; min-width: 0; }
+.platz .name { font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--farbe); text-shadow: 0 1px 0 #000; }
+.platz .pkt { font: 800 26px/1 var(--schrift-titel); }
+.platz .kreuz { width: 30px; height: 30px; }
+.platz.p1 .kreuz { width: 40px; height: 40px; }
+.krone { width: 38px; height: 24px; fill: var(--messing); stroke: #6a4d17; stroke-width: 1.5; }
+.sockel {
+  width: 100%; display: grid; place-items: start center; padding-top: 6px; font: 800 34px/1 var(--schrift-titel); color: var(--torf);
+  background: linear-gradient(180deg, var(--messing), #a9873c); border-top: 6px solid var(--farbe); transform-origin: bottom; animation: steigen .6s cubic-bezier(.2, .8, .3, 1.15) both;
+}
+.p1 .sockel { height: 118px; animation-delay: .9s; }
+.p2 .sockel { height: 82px; animation-delay: .5s; }
+.p3 .sockel { height: 56px; animation-delay: .1s; }
+@keyframes steigen { from { transform: scaleY(0); } }
+.ehrung-tab td:nth-child(2) { text-align: left; padding-left: 8px; overflow: hidden; text-overflow: ellipsis; max-width: 0; width: 100%; }
+.ehrung-tab td:first-child { color: var(--blass); }
+.ehrung-tab tr.ich td { color: var(--signal); }
+.ehrung-tab .farbpunkt { margin-right: 7px; }
+#ehrung-hinweis { font-size: 15px; color: var(--blass); margin: 10px 0 0; }
+.strecke-titel { font: 700 19px/1.1 var(--schrift-titel); color: var(--messing); margin: 18px 0 4px; }
+@media (prefers-reduced-motion: reduce) { #laden.mahnt { animation: none; } .huelse { transition: none; } .sockel { animation: none; } }
+</style>
+
+<div id="spiel">
+  <canvas id="bild" aria-label="Spielfeld: Moorlandschaft mit fliegenden Moorhühnern"></canvas>
+
+  <div id="hud" hidden>
+    <div class="wert"><span>Punkte</span><b id="punkte">0</b></div>
+    <div class="wert" id="zeit-box"><span>Zeit</span><b id="zeit">90</b></div>
+  </div>
+
+  <div id="knoepfe">
+    <button class="rund" id="pause-knopf" type="button" aria-label="Pause" title="Pause (P)" hidden>
+      <svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>
+    </button>
+    <button class="rund" id="ton-knopf" type="button" aria-label="Ton aus" title="Ton an oder aus">
+      <svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6L8 10z"/><path id="ton-an" d="M16.5 9a4 4 0 0 1 0 6M19 6.5a8 8 0 0 1 0 11"/><path id="ton-aus" d="M16 10l5 5M21 10l-5 5" hidden/></svg>
+    </button>
+    <button class="rund" id="vollbild-knopf" type="button" aria-label="Vollbild" title="Vollbild" hidden>
+      <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>
+  </div>
+
+  <button id="laden" type="button" aria-label="Nachladen" hidden>
+    <span id="patronen"></span>
+    <small id="laden-text">Nachladen</small>
+  </button>
+
+  <ol id="rangliste" hidden aria-label="Punktestand der Jäger"></ol>
+  <div id="countdown" hidden aria-live="assertive"></div>
+  <div id="meldung" role="status" hidden></div>
+
+  <section class="tafel" id="menue">
+    <div class="spalten">
+      <div>
+        <h1>Moorjagd</h1>
+        <p class="unterzeile">90 Sekunden, 8 Patronen und ein Moor voller frecher Hühner.</p>
+        <div class="reihe" style="margin-top:0">
+          <button class="auftakt" id="los" type="button">Allein jagen</button>
+          <button class="zweit" id="mehr-knopf" type="button" hidden>Mit anderen jagen</button>
+        </div>
+        <dl class="steuerung nur-maus">
+          <dt>Linksklick</dt><dd>Schießen</dd>
+          <dt>Rechtsklick</dt><dd>Nachladen, auch mit der Leertaste</dd>
+          <dt>Bildrand</dt><dd>Maus an den Rand führen oder Mausrad: umsehen</dd>
+        </dl>
+        <dl class="steuerung nur-finger">
+          <dt>Antippen</dt><dd>Schießen</dd>
+          <dt>Wischen</dt><dd>Umsehen</dd>
+          <dt>Patronen</dt><dd>Antippen zum Nachladen</dd>
+        </dl>
+      </div>
+      <div>
+        <h2>Was es bringt</h2>
+        <div class="preise">
+          <div class="preis"><canvas data-huhn="0" width="92" height="92"></canvas><b>25</b></div>
+          <div class="preis"><canvas data-huhn="1" width="92" height="92"></canvas><b>10</b></div>
+          <div class="preis"><canvas data-huhn="2" width="92" height="92"></canvas><b>5</b></div>
+        </div>
+        <p class="preise-text">Je weiter weg, desto mehr Punkte. <b>Versteckte Hühner</b> in Mühle, Brunnen, Eiche und Heuhaufen: 15 bis 25. <b>Ballon</b>: 50. <b>Wegweiser</b>: 10 je Schild. <b>Vogelscheuche</b>: 25 Abzug. <b>Nachladen</b>: 10 Abzug für die Schachtel Patronen, Reste im Magazin sind verloren.</p>
+        <div class="liste" style="margin-top:14px">
+          <h2>Streckenliste</h2>
+          <ol id="strecken"></ol>
+          <p class="liste-leer" id="strecken-leer">Noch keine Strecke eingetragen. Nach deiner ersten Runde steht hier dein Name.</p>
+          <p class="quelle" id="strecken-quelle"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tafel" id="ende" hidden>
+    <div class="spalten">
+      <div>
+        <p class="eyebrow">Hahn in Ruh!</p>
+        <div class="ergebnis" id="ende-punkte">0</div>
+        <p class="urteil" id="ende-urteil"></p>
+        <table><tbody id="ende-tabelle"></tbody></table>
+        <div class="reihe">
+          <button class="auftakt" id="nochmal" type="button">Noch eine Runde</button>
+        </div>
+      </div>
+      <div>
+        <form id="eintragen">
+          <input id="name" name="name" maxlength="16" placeholder="Dein Name" autocomplete="nickname" aria-label="Dein Name für die Streckenliste">
+          <button class="zweit" id="eintragen-knopf" type="submit">Strecke eintragen</button>
+          <p id="eintragen-hinweis"></p>
+        </form>
+        <div class="liste" style="margin-top:12px">
+          <h2>Streckenliste</h2>
+          <ol id="strecken-ende"></ol>
+          <p class="liste-leer" id="strecken-ende-leer">Noch keine Strecke eingetragen.</p>
+          <p class="quelle" id="strecken-ende-quelle"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tafel" id="lobby" hidden>
+    <div class="spalten">
+      <div>
+        <p class="eyebrow">Mehrspieler</p>
+        <h1 class="h1-klein">Gemeinsam jagen</h1>
+        <p class="unterzeile">Mach einen Raum auf und nimm Mitjäger an, oder frag bei einem offenen Raum an.</p>
+        <label class="feld"><span>Dein Name</span><input class="eingabe" id="mp-name" maxlength="16" autocomplete="nickname"></label>
+        <form id="raum-neu">
+          <input class="eingabe" id="raum-name" maxlength="28" placeholder="Name des Raums (darf leer bleiben)" aria-label="Name des Raums">
+          <button class="auftakt klein" type="submit">Raum erstellen</button>
+        </form>
+        <div class="reihe"><button class="zweit" id="lobby-zurueck" type="button">Zurück</button></div>
+        <p class="quelle" id="mp-status"></p>
+      </div>
+      <div>
+        <div class="liste" id="anfrage-box" hidden>
+          <h2>Anfrage gestellt</h2>
+          <p id="anfrage-text"></p>
+          <button class="zweit klein" id="zurueckziehen" type="button">Zurückziehen</button>
+        </div>
+        <div class="liste">
+          <h2>Offene Räume</h2>
+          <ul class="raumliste ohne-symbol" id="raeume"></ul>
+          <p class="liste-leer" id="raeume-leer">Gerade ist kein Raum offen. Erstell doch einen.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tafel" id="raum" hidden>
+    <div class="spalten">
+      <div>
+        <p class="eyebrow">Raum</p>
+        <h1 class="h1-klein" id="raum-titel"></h1>
+        <p class="unterzeile" id="raum-unterzeile"></p>
+        <div class="reihe">
+          <button class="auftakt" id="raum-start" type="button" hidden>Runde starten</button>
+          <button class="zweit" id="raum-verlassen" type="button">Raum verlassen</button>
+        </div>
+        <p class="quelle" id="raum-hinweis"></p>
+      </div>
+      <div>
+        <div class="liste" id="anfragen-box" hidden style="border-top-color: var(--signal); margin-bottom: 14px">
+          <h2>Aufnahme-Anfragen</h2>
+          <ul class="raumliste ohne-symbol" id="anfragen"></ul>
+        </div>
+        <div class="liste">
+          <h2>Jäger im Raum</h2>
+          <ul class="raumliste" id="jaeger"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tafel" id="ehrung" hidden>
+    <div class="spalten">
+      <div>
+        <p class="eyebrow">Siegerehrung</p>
+        <h1 class="h1-klein" id="ehrung-titel"></h1>
+        <p class="unterzeile" id="ehrung-unter" hidden></p>
+        <div class="podest" id="podest"></div>
+        <div class="reihe">
+          <button class="auftakt" id="ehrung-weiter" type="button">Nächste Runde</button>
+          <button class="zweit" id="ehrung-raum" type="button">Zum Raum</button>
+        </div>
+        <p id="ehrung-hinweis"></p>
+      </div>
+      <div>
+        <div class="liste">
+          <h2>Strecke der Runde</h2>
+          <table class="ehrung-tab"><tbody id="ehrung-tabelle"></tbody></table>
+          <h3 class="strecke-titel" id="ehrung-strecke-titel">Deine Strecke</h3>
+          <table><tbody id="ehrung-strecke"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tafel" id="rast" hidden>
+    <div class="spalten">
+      <div>
+        <h1 class="h1-klein">Kurze Rast</h1>
+        <p class="unterzeile">Die Jagd läuft für alle weiter, auch die Zeit. Mit „Weiterjagen“ (oder Esc) bist du sofort wieder dabei.</p>
+        <div class="reihe">
+          <button class="auftakt" id="rast-weiter" type="button">Weiterjagen</button>
+          <button class="zweit" id="rast-verlassen" type="button">Runde verlassen</button>
+        </div>
+        <p class="quelle">Wer die Runde verlässt, verlässt auch den Raum und kommt zurück in die Übersicht der Räume.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="tafel" id="pause" hidden>
+    <div class="spalten">
+      <div>
+        <h1>Pause</h1>
+        <p class="unterzeile">Die Hühner warten. Die Zeit läuft erst weiter, wenn du zurück bist.</p>
+        <div class="reihe">
+          <button class="auftakt" id="weiter" type="button">Weiterjagen</button>
+          <button class="zweit" id="abbrechen" type="button">Runde abbrechen</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+'use strict';
+const WELT = 2400, DAUER = 90, MAGAZIN = 8, LADEZEIT = 0.55, LADEKOSTEN = 10;
+const $ = id => document.getElementById(id);
+const box = $('spiel'), bild = $('bild'), ctx = bild.getContext('2d');
+const ruhig = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const TAU = Math.PI * 2, sin = Math.sin, cos = Math.cos;
+const zufall = (a, b) => a + Math.random() * (b - a);
+const klemme = (w, a, b) => Math.max(a, Math.min(b, w));
+const FONT = '"Grenze Gotisch", "Palatino Linotype", Georgia, serif';
+
+function speicherLesen(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function speicherSchreiben(k, w) { try { localStorage.setItem(k, w); } catch {} }
+
+// Ebenen von fern nach nah: p = Mitbewegung beim Umsehen
+const LAGE = [
+  { name: 'fern', p: .3, groesse: 46, punkte: 25, tempo: [55, 90], band: [150, 305], dunst: .3 },
+  { name: 'mittel', p: .55, groesse: 78, punkte: 10, tempo: [90, 150], band: [90, 350], dunst: .1 },
+  { name: 'nah', p: 1, groesse: 130, punkte: 5, tempo: [150, 230], band: [70, 400], dunst: 0 },
+];
+const P_VORN = 1.25;
+
+const G = {
+  phase: 'menue', pausiert: false, modus: 'solo',
+  punkte: 0, zeit: DAUER, munition: MAGAZIN, laden: 0,
+  schuesse: 0, treffer: 0, strecke: { fern: 0, mittel: 0, nah: 0, versteckt: 0, ballon: 0, schild: 0, scheuche: 0 },
+  kamera: 0, kameraV: 0, uhr: 0, naechstes: 0, ballonPlan: [],
+};
+const huehner = [], federn = [], texte = [], wolken = [];
+const orte = [];
+let ballon = null, schilder = 3, scheucheWackeln = 0, scheucheSperre = 0;
+let blitz = 0, wackeln = 0, leerHinweis = 0, rueckstoss = 0;
+let muehleWinkel = 0, muehleX = 0;
+
+// Maßstab: die Welt ist 600 Einheiten hoch, im Hochformat kommt oben Himmel dazu
+let cssB = 1, cssH = 1, dpr = 1, massstab = 1, sichtB = 1, sichtH = 600, obenY = 0, kameraMax = 0;
+let ebeneFern, ebeneMitte, ebeneNah, ebeneVorn, himmel;
+const sprites = [[], [], []];
+
+function zufallsquelle(s) {
+  return () => {
+    s |= 0; s = s + 0x6D2B79F5 | 0;
+    let t = Math.imul(s ^ s >>> 15, 1 | s);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const hoeheFern = x => 320 + 22 * sin(x / 210 + 1) + 12 * sin(x / 83 + 2.1);
+const hoeheMitte = x => 402 + 24 * sin(x / 260 + .4) + 9 * sin(x / 97 + 1.3);
+const hoeheNah = x => 492 + 16 * sin(x / 310 + 2.2) + 6 * sin(x / 120);
+const hoeheVorn = x => 574 + 9 * sin(x / 170 + .8) + 4 * sin(x / 60);
+
+function ebeneBreite(p) { return sichtB + kameraMax * p; }
+
+function neueEbene(p, malen) {
+  const b = ebeneBreite(p);
+  const rs = Math.min(massstab * dpr, 4096 / b);
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(b * rs); c.height = Math.ceil(600 * rs);
+  const k = c.getContext('2d');
+  k.scale(rs, rs);
+  malen(k, b);
+  return { c, p, rs };
+}
+
+function huegel(k, f, b, farben, oben) {
+  const v = k.createLinearGradient(0, oben, 0, 600);
+  farben.forEach((col, i) => v.addColorStop(i / (farben.length - 1), col));
+  k.fillStyle = v;
+  k.beginPath(); k.moveTo(0, 600);
+  for (let x = 0; x <= b + 6; x += 6) k.lineTo(x, f(x));
+  k.lineTo(b + 6, 600); k.closePath(); k.fill();
+}
+
+function malFern(k, b) {
+  const r = zufallsquelle(11);
+  const weit = x => 292 + 30 * sin(x / 340 + 3) + 10 * sin(x / 120);
+  huegel(k, weit, b, ['#a9bcc0', '#c2c5b4'], 260);
+  huegel(k, hoeheFern, b, ['#8e9ea3', '#a8a795', '#8f8c76'], 300);
+  k.fillStyle = '#7e8d90';
+  // Burgruine auf dem Kamm
+  const rx = b * .2, ry = hoeheFern(rx);
+  k.fillRect(rx - 14, ry - 54, 28, 58);
+  k.fillRect(rx + 14, ry - 26, 44, 30);
+  for (let i = 0; i < 4; i++) k.fillRect(rx - 14 + i * 8, ry - 60, 5, 8);
+  k.fillRect(rx + 50, ry - 40, 8, 16);
+  // Kirchturm
+  const kx = b * .68, ky = hoeheFern(kx);
+  k.fillRect(kx - 8, ky - 42, 16, 46);
+  k.beginPath(); k.moveTo(kx - 10, ky - 42); k.lineTo(kx, ky - 78); k.lineTo(kx + 10, ky - 42); k.fill();
+  k.fillRect(kx + 8, ky - 20, 34, 24);
+  // Fichtenreihen
+  for (let i = 0; i < b / 26; i++) {
+    const x = r() * b, y = hoeheFern(x) + r() * 12, h = 10 + r() * 16;
+    k.fillStyle = r() < .5 ? '#73838a' : '#7b8a86';
+    k.beginPath(); k.moveTo(x - h * .32, y + 2); k.lineTo(x, y - h); k.lineTo(x + h * .32, y + 2); k.fill();
+  }
+}
+
+function birke(k, x, y, h, r) {
+  k.strokeStyle = '#e6e2d3'; k.lineWidth = 4; k.lineCap = 'round';
+  k.beginPath(); k.moveTo(x, y); k.quadraticCurveTo(x + 4, y - h * .5, x - 2, y - h); k.stroke();
+  k.fillStyle = '#3c3a33';
+  for (let i = 0; i < 5; i++) k.fillRect(x - 2, y - r() * h * .8, 3, 1.5);
+  for (let i = 0; i < 16; i++) {
+    k.fillStyle = ['#d9a932', '#e6bf4b', '#bf8d2a'][i % 3];
+    k.beginPath(); k.ellipse(x - 2 + (r() - .5) * h * .6, y - h * (.55 + r() * .55), 5 + r() * 7, 3 + r() * 5, r() * 3, 0, TAU); k.fill();
+  }
+}
+
+function malMitte(k, b) {
+  const r = zufallsquelle(23);
+  huegel(k, hoeheMitte, b, ['#7a6288', '#7b6252', '#5f5a37'], 370);
+  // Heidekraut und Pfeifengras in Flecken
+  for (let i = 0; i < b / 4; i++) {
+    const x = r() * b, y = hoeheMitte(x) + 4 + r() * 130;
+    k.fillStyle = ['rgba(171,110,180,.42)', 'rgba(198,150,70,.32)', 'rgba(70,84,44,.32)'][i % 3];
+    k.beginPath(); k.ellipse(x, y, 8 + r() * 24, 2.5 + r() * 5, 0, 0, TAU); k.fill();
+  }
+  // Weidezaun
+  k.strokeStyle = '#3f3324'; k.lineWidth = 2.5; k.lineCap = 'round';
+  const z0 = b * .55, z1 = b * .82;
+  for (let x = z0; x < z1; x += 44) { const y = hoeheMitte(x); k.beginPath(); k.moveTo(x, y + 8); k.lineTo(x, y - 18); k.stroke(); }
+  k.lineWidth = 1.4; k.beginPath();
+  for (let x = z0; x <= z1; x += 22) { const y = hoeheMitte(x) - 12; x === z0 ? k.moveTo(x, y) : k.lineTo(x, y); } k.stroke();
+  // Birken
+  for (let i = 0; i < 9; i++) {
+    const x = (i + .5) / 9 * b + (r() - .5) * 80;
+    if (Math.abs(x - b * .42) < 120) continue;
+    birke(k, x, hoeheMitte(x) + 5, 60 + r() * 42, r);
+  }
+  // Windmühle (Flügel kommen pro Bild dazu)
+  muehleX = b * .42;
+  const y0 = hoeheMitte(muehleX) + 6;
+  k.fillStyle = '#d7c8a6'; k.strokeStyle = '#3d3122'; k.lineWidth = 2.5;
+  k.beginPath(); k.moveTo(muehleX - 58, y0); k.lineTo(muehleX - 32, y0 - 190); k.lineTo(muehleX + 32, y0 - 190); k.lineTo(muehleX + 58, y0); k.closePath(); k.fill(); k.stroke();
+  k.strokeStyle = 'rgba(61,49,34,.3)'; k.lineWidth = 1;
+  for (let i = 1; i < 9; i++) { const y = y0 - i * 21; const w = 58 - 26 * (i * 21 / 190); k.beginPath(); k.moveTo(muehleX - w, y); k.lineTo(muehleX + w, y); k.stroke(); }
+  k.fillStyle = '#5d3a22'; k.strokeStyle = '#3d3122'; k.lineWidth = 2.5;
+  k.beginPath(); k.moveTo(muehleX - 38, y0 - 188); k.quadraticCurveTo(muehleX, y0 - 244, muehleX + 38, y0 - 188); k.closePath(); k.fill(); k.stroke();
+  k.fillStyle = '#4b3220'; k.fillRect(muehleX - 13, y0 - 36, 26, 36);
+  // Fenster, aus dem das Huhn schaut
+  k.fillStyle = '#231a12'; k.fillRect(muehleX - 21, y0 - 118, 42, 42);
+  k.strokeRect(muehleX - 21, y0 - 118, 42, 42);
+}
+
+function eiche(k, x, y) {
+  const r = zufallsquelle(77);
+  stammPfad(k, x, y);
+  k.fillStyle = '#4a3322'; k.fill();
+  for (let i = 0; i < 46; i++) {
+    const a = r() * TAU, d = Math.sqrt(r());
+    k.fillStyle = ['#a9682a', '#8c5722', '#c28a31', '#6d5a22'][i % 4];
+    k.beginPath();
+    k.ellipse(x + cos(a) * d * 145, y - 300 + sin(a) * d * 92, 26 + r() * 30, 18 + r() * 22, r() * 3, 0, TAU);
+    k.fill();
+  }
+}
+function stammPfad(k, x, y) {
+  k.beginPath();
+  k.moveTo(x - 48, y + 10);
+  k.bezierCurveTo(x - 26, y - 60, x - 24, y - 150, x - 42, y - 262);
+  k.lineTo(x + 40, y - 262);
+  k.bezierCurveTo(x + 24, y - 150, x + 28, y - 60, x + 50, y + 10);
+  k.closePath();
+}
+
+function malNah(k, b) {
+  const r = zufallsquelle(41);
+  huegel(k, hoeheNah, b, ['#6b7334', '#4b5827', '#2f3a1c'], 470);
+  // Moortümpel mit Himmelsspiegelung
+  const tx = 1565, ty = hoeheNah(tx) + 62;
+  k.fillStyle = '#2a2b19'; k.beginPath(); k.ellipse(tx, ty, 170, 28, 0, 0, TAU); k.fill();
+  const sp = k.createLinearGradient(0, ty - 22, 0, ty + 22);
+  sp.addColorStop(0, '#9bb3b4'); sp.addColorStop(1, '#556b6e');
+  k.fillStyle = sp; k.beginPath(); k.ellipse(tx, ty, 156, 22, 0, 0, TAU); k.fill();
+  // Trockenmauer
+  const m0 = 80, m1 = 610;
+  for (let x = m0; x < m1; x += 30) {
+    const y = hoeheNah(x) + 8;
+    for (let z = 0; z < 3; z++) {
+      k.fillStyle = ['#8c8a79', '#74725f', '#9d9a85'][Math.floor(r() * 3)];
+      k.beginPath(); k.ellipse(x + (z % 2) * 15, y - z * 13, 17, 8, 0, 0, TAU); k.fill();
+    }
+  }
+  // Torfstich: gestapelte Soden
+  const sx = 980, sy = hoeheNah(sx) + 14;
+  for (let z = 0; z < 4; z++) for (let i = 0; i < 6 - z; i++) {
+    k.fillStyle = (i + z) % 2 ? '#3e2a1b' : '#4e3522';
+    k.fillRect(sx - 70 + z * 12 + i * 24, sy - z * 14, 22, 12);
+  }
+  // Riedgras und Besenheide
+  for (let i = 0; i < b / 5; i++) {
+    const x = r() * b, y0 = hoeheNah(x);
+    const y = y0 + 4 + Math.pow(r(), 1.5) * (600 - y0);
+    if (Math.abs(x - tx) < 170 && Math.abs(y - ty) < 30) continue;
+    k.strokeStyle = ['#c58c35', '#8b8a33', '#a9672b', '#9c6aa3'][i % 4];
+    k.lineWidth = 1.6; k.lineCap = 'round';
+    for (let j = 0; j < 3; j++) {
+      k.beginPath(); k.moveTo(x + j * 3, y);
+      k.quadraticCurveTo(x + j * 3, y - 10, x + j * 4 - 3 + r() * 8, y - 14 - r() * 12); k.stroke();
+    }
+  }
+  // Eiche, Brunnen-Rückseite
+  eiche(k, 1880, hoeheNah(1880));
+  const bx = 720, by = hoeheNah(bx) + 16;
+  k.strokeStyle = '#3f2c1c'; k.lineWidth = 7; k.lineCap = 'butt';
+  k.beginPath(); k.moveTo(bx - 42, by - 30); k.lineTo(bx - 42, by - 132); k.moveTo(bx + 42, by - 30); k.lineTo(bx + 42, by - 132); k.stroke();
+  k.fillStyle = '#5d3a22'; k.strokeStyle = '#2e1e13'; k.lineWidth = 2.5;
+  k.beginPath(); k.moveTo(bx - 62, by - 124); k.lineTo(bx, by - 170); k.lineTo(bx + 62, by - 124); k.closePath(); k.fill(); k.stroke();
+  k.fillStyle = '#17140c'; k.beginPath(); k.ellipse(bx, by - 42, 48, 13, 0, 0, TAU); k.fill();
+}
+
+function malVorn(k, b) {
+  const r = zufallsquelle(5);
+  huegel(k, hoeheVorn, b, ['#23301a', '#141b0e'], 560);
+  for (let i = 0; i < b / 150; i++) {
+    const x0 = r() * b, anzahl = 3 + r() * 7;
+    for (let j = 0; j < anzahl; j++) {
+      const x = x0 + (r() - .5) * 90, y = hoeheVorn(x) + 6, h = 30 + r() * 68, neig = (r() - .5) * 26;
+      k.strokeStyle = '#1d2914'; k.lineWidth = 2.6; k.lineCap = 'round';
+      k.beginPath(); k.moveTo(x, y); k.quadraticCurveTo(x, y - h * .6, x + neig, y - h); k.stroke();
+      if (r() < .4) { // Rohrkolben
+        k.fillStyle = '#3a2614';
+        k.beginPath(); k.ellipse(x + neig * .92, y - h * .95, 3.4, 11, neig / 200, 0, TAU); k.fill();
+      }
+    }
+  }
+}
+
+function malHimmel() {
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(cssB * dpr); c.height = Math.ceil(cssH * dpr);
+  const k = c.getContext('2d');
+  const v = k.createLinearGradient(0, 0, 0, c.height);
+  v.addColorStop(0, '#6c9bb0'); v.addColorStop(.48, '#a9c6c0'); v.addColorStop(.72, '#ecd8a8'); v.addColorStop(1, '#ecb97c');
+  k.fillStyle = v; k.fillRect(0, 0, c.width, c.height);
+  const sx = c.width * .72, sy = (obenY + 165) * massstab * dpr, sr = 44 * massstab * dpr;
+  const g = k.createRadialGradient(sx, sy, sr * .3, sx, sy, sr * 6);
+  g.addColorStop(0, 'rgba(255,241,190,.85)'); g.addColorStop(.2, 'rgba(255,226,160,.35)'); g.addColorStop(1, 'rgba(255,226,160,0)');
+  k.fillStyle = g; k.fillRect(0, 0, c.width, c.height);
+  k.fillStyle = '#fff4cf'; k.beginPath(); k.arc(sx, sy, sr, 0, TAU); k.fill();
+  return c;
+}
+
+function neueWolken() {
+  wolken.length = 0;
+  const r = zufallsquelle(99);
+  for (let i = 0; i < 7; i++) {
+    const b = 180 + r() * 220, h = b * .5;
+    const rs = massstab * dpr * .6;
+    const c = document.createElement('canvas');
+    c.width = Math.ceil(b * rs); c.height = Math.ceil(h * rs);
+    const k = c.getContext('2d'); k.scale(rs, rs);
+    k.fillStyle = '#fff';
+    for (let j = 0; j < 14; j++) {
+      const x = b * (.22 + r() * .56), y = h * (.5 + r() * .18), rad = h * (.1 + r() * .2);
+      k.beginPath(); k.arc(x, y, rad, 0, TAU); k.fill();
+    }
+    // Erst vollflächig malen, dann einfärben: so entsteht eine zusammenhängende Wolke statt einzelner Blasen
+    k.globalCompositeOperation = 'source-in';
+    const licht = k.createLinearGradient(0, h * .2, 0, h);
+    licht.addColorStop(0, 'rgba(255,250,236,.86)'); licht.addColorStop(1, 'rgba(226,208,190,.72)');
+    k.fillStyle = licht; k.fillRect(0, 0, b, h);
+    wolken.push({ c, b, h, x: r() * (sichtB + 400) - 200, y: -obenY * r() * .9 + 20 + r() * 180, v: 4 + r() * 8 });
+  }
+}
+
+// Das Huhn: Blick nach rechts, Zeichenfeld ±70. Rote Rose über dem Auge und befiederte Läufe wie beim echten Moorschneehuhn.
+function zeichneHuhn(c, f) {
+  const tot = f === 4, sitzt = f === 5;
+  const winkel = [.55, .1, -.45, -1, -.95, -1.2][f];
+  const linie = '#26140a';
+  c.lineJoin = 'round'; c.lineCap = 'round'; c.lineWidth = 3; c.strokeStyle = linie;
+  c.fillStyle = '#35200f';
+  c.beginPath(); c.moveTo(-26, -2); c.lineTo(-64, -18); c.lineTo(-58, -3); c.lineTo(-68, 8); c.lineTo(-56, 15); c.lineTo(-24, 20); c.closePath(); c.fill(); c.stroke();
+  c.fillStyle = '#efe7d3';
+  for (const [x, w] of [[-7, .3], [12, -.1]]) {
+    c.beginPath(); c.ellipse(x, 33, 7, 12, w, 0, TAU); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(x - 4, 44); c.lineTo(x + 9, 46); c.moveTo(x - 2, 44); c.lineTo(x + 3, 50); c.stroke();
+  }
+  const k = c.createLinearGradient(0, -30, 0, 36);
+  k.addColorStop(0, '#b25d2b'); k.addColorStop(1, '#6f3318');
+  c.fillStyle = k;
+  c.beginPath(); c.ellipse(0, 4, 39, 31, -.1, 0, TAU); c.fill(); c.stroke();
+  c.fillStyle = 'rgba(214,158,92,.7)';
+  c.beginPath(); c.ellipse(11, 19, 23, 13, -.12, 0, TAU); c.fill();
+  c.strokeStyle = 'rgba(38,20,10,.55)'; c.lineWidth = 2;
+  for (const [x, y] of [[-18, 18], [-6, 24], [8, 26], [22, 20], [14, 12], [0, 14], [-14, 8]]) {
+    c.beginPath(); c.moveTo(x - 4, y); c.quadraticCurveTo(x, y + 3, x + 4, y); c.stroke();
+  }
+  c.strokeStyle = linie; c.lineWidth = 3;
+  c.fillStyle = '#a55427';
+  c.beginPath(); c.arc(34, -19, 20, 0, TAU); c.fill(); c.stroke();
+  c.fillStyle = '#d92b22';
+  c.beginPath(); c.moveTo(24, -31); c.quadraticCurveTo(26, -44, 33, -37); c.quadraticCurveTo(38, -47, 42, -37); c.quadraticCurveTo(49, -42, 50, -29); c.quadraticCurveTo(38, -35, 24, -31); c.closePath(); c.fill(); c.stroke();
+  c.fillStyle = '#e9b130';
+  c.beginPath(); c.moveTo(51, -24); c.quadraticCurveTo(62, -24, 71, -15); c.quadraticCurveTo(61, -10, 50, -10); c.closePath(); c.fill(); c.stroke();
+  if (tot) {
+    c.fillStyle = '#e8554e';
+    c.beginPath(); c.ellipse(60, -5, 4, 8, -.4, 0, TAU); c.fill(); c.stroke();
+    c.lineWidth = 3.4;
+    c.beginPath(); c.moveTo(32, -26); c.lineTo(44, -14); c.moveTo(44, -26); c.lineTo(32, -14); c.stroke();
+  } else {
+    c.fillStyle = '#fff';
+    c.beginPath(); c.ellipse(39, -20, 9.5, 11, 0, 0, TAU); c.fill(); c.stroke();
+    c.fillStyle = '#111';
+    c.beginPath(); c.arc(sitzt ? 41 : 42, sitzt ? -18 : -20, 4.6, 0, TAU); c.fill();
+    c.fillStyle = '#fff';
+    c.beginPath(); c.arc(43.5, -22, 1.5, 0, TAU); c.fill();
+  }
+  c.save();
+  c.translate(-2, -8); c.rotate(winkel);
+  const w = c.createLinearGradient(-50, -40, 8, 6);
+  w.addColorStop(0, '#3f2211'); w.addColorStop(1, '#8c4b22');
+  c.fillStyle = w;
+  c.beginPath(); c.moveTo(10, 3); c.bezierCurveTo(4, -30, -30, -50, -58, -44);
+  c.quadraticCurveTo(-50, -34, -54, -24); c.quadraticCurveTo(-44, -23, -44, -13); c.quadraticCurveTo(-30, -14, -24, -2); c.quadraticCurveTo(-8, 10, 10, 3); c.closePath(); c.fill(); c.stroke();
+  c.strokeStyle = 'rgba(244,226,190,.35)'; c.lineWidth = 1.8;
+  c.beginPath(); c.moveTo(0, -4); c.quadraticCurveTo(-22, -26, -46, -34); c.moveTo(-4, 0); c.quadraticCurveTo(-20, -14, -36, -18); c.stroke();
+  c.restore();
+}
+
+function baueSprites() {
+  LAGE.forEach((l, i) => {
+    const d = l.groesse * 140 / 120;
+    const px = Math.max(24, Math.ceil(d * massstab * dpr));
+    sprites[i] = [0, 1, 2, 3, 4, 5].map(f => {
+      const c = document.createElement('canvas');
+      c.width = c.height = px;
+      const k = c.getContext('2d');
+      k.scale(px / 140, px / 140); k.translate(70, 70);
+      zeichneHuhn(k, f);
+      if (l.dunst) {
+        k.setTransform(1, 0, 0, 1, 0, 0);
+        k.globalCompositeOperation = 'source-atop';
+        k.fillStyle = `rgba(150,172,182,${l.dunst})`;
+        k.fillRect(0, 0, px, px);
+      }
+      return c;
+    });
+  });
+  document.querySelectorAll('canvas[data-huhn]').forEach(c => {
+    const l = LAGE[+c.dataset.huhn], k = c.getContext('2d');
+    k.clearRect(0, 0, 92, 92);
+    const a = 92 * (l.groesse === 46 ? .6 : l.groesse === 78 ? .8 : 1) / 140;
+    k.setTransform(a, 0, 0, a, 46, 46);
+    zeichneHuhn(k, 1);
+    k.setTransform(1, 0, 0, 1, 0, 0);
+  });
+}
+
+function baueOrte() {
+  orte.length = 0;
+  const neu = (o) => orte.push(Object.assign({ phase: 'warten', t: zufall(1, 6), hub: 0, halten: 0 }, o));
+  neu({ art: 'eiche', lage: 2, x: 1880, grund: hoeheNah(1880), punkte: 20, groesse: 84 });
+  neu({ art: 'heu', lage: 2, x: 2200, grund: hoeheNah(2200) + 8, punkte: 15, groesse: 84 });
+  neu({ art: 'brunnen', lage: 2, x: 720, grund: hoeheNah(720) + 16, punkte: 15, groesse: 68 });
+  neu({ art: 'muehle', lage: 1, x: muehleX, grund: hoeheMitte(muehleX) + 6, punkte: 25, groesse: 40 });
+}
+
+let laeuft = false;
+function groesseAnpassen() {
+  const r = box.getBoundingClientRect();
+  if (r.width < 10 || r.height < 10) return;
+  if (r.width === cssB && r.height === cssH && laeuft) return;
+  cssB = r.width; cssH = r.height;
+  dpr = Math.min(devicePixelRatio || 1, 2);
+  bild.width = Math.round(cssB * dpr); bild.height = Math.round(cssH * dpr);
+  massstab = Math.min(cssH / 600, cssB / 560);
+  sichtB = cssB / massstab; sichtH = cssH / massstab; obenY = sichtH - 600;
+  kameraMax = Math.max(0, WELT - sichtB);
+  G.kamera = klemme(G.kamera, 0, kameraMax);
+  himmel = malHimmel();
+  neueWolken();
+  ebeneFern = neueEbene(LAGE[0].p, malFern);
+  ebeneMitte = neueEbene(LAGE[1].p, malMitte);
+  ebeneNah = neueEbene(1, malNah);
+  ebeneVorn = neueEbene(P_VORN, malVorn);
+  baueSprites();
+  const alteOrte = orte.map(({ phase, t, hub, halten }) => ({ phase, t, hub, halten }));
+  baueOrte();
+  if (laeuft) alteOrte.forEach((s, i) => Object.assign(orte[i], s));
+  laeuft = true;
+  // Im Mehrspieler rechnet jedes Huhn seine Lage aus der Weltkoordinate, die Runde läuft einfach weiter
+  if (mpJagd()) return;
+  // Fliegende Hühner an die neue Ebenenbreite anpassen: einfach neu einfliegen lassen
+  huehner.length = 0; federn.length = 0; texte.length = 0;
+  for (let i = 0; i < 5; i++) { spawn(); const h = huehner[huehner.length - 1]; h.x += h.v * zufall(1, 5); }
+}
+
+/* ---------- Ton (alles synthetisch) ---------- */
+let ton = null, stumm = speicherLesen('moorjagd.stumm') === '1';
+function tonStarten() {
+  if (ton) { if (ton.c.state === 'suspended') ton.c.resume().catch(() => {}); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  const c = new AC();
+  const haupt = c.createGain(); haupt.gain.value = stumm ? 0 : .8; haupt.connect(c.destination);
+  const puffer = c.createBuffer(1, c.sampleRate * 1.5, c.sampleRate);
+  const d = puffer.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  ton = { c, haupt, puffer };
+  const wind = c.createBufferSource(); wind.buffer = puffer; wind.loop = true;
+  const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 340;
+  const g = c.createGain(); g.gain.value = .05;
+  const lfo = c.createOscillator(); lfo.frequency.value = .13;
+  const lg = c.createGain(); lg.gain.value = .025;
+  lfo.connect(lg); lg.connect(g.gain); lfo.start();
+  wind.connect(f); f.connect(g); g.connect(haupt); wind.start();
+  if (c.state === 'suspended') c.resume().catch(() => {});
+}
+function rauschen(dauer, typ, freq, lautstaerke, verzoegert = 0, freqEnde) {
+  if (!ton) return;
+  const { c, haupt, puffer } = ton, t = c.currentTime + verzoegert;
+  const s = c.createBufferSource(); s.buffer = puffer;
+  const f = c.createBiquadFilter(); f.type = typ; f.frequency.setValueAtTime(freq, t);
+  if (freqEnde) f.frequency.exponentialRampToValueAtTime(freqEnde, t + dauer);
+  const g = c.createGain(); g.gain.setValueAtTime(lautstaerke, t); g.gain.exponentialRampToValueAtTime(.001, t + dauer);
+  s.connect(f); f.connect(g); g.connect(haupt);
+  s.start(t, Math.random()); s.stop(t + dauer + .02);
+}
+function klang(typ, f0, f1, dauer, lautstaerke, verzoegert = 0) {
+  if (!ton) return;
+  const { c, haupt } = ton, t = c.currentTime + verzoegert;
+  const o = c.createOscillator(); o.type = typ; o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dauer);
+  const g = c.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(lautstaerke, t + .008); g.gain.exponentialRampToValueAtTime(.001, t + dauer);
+  o.connect(g); g.connect(haupt); o.start(t); o.stop(t + dauer + .02);
+}
+const tonSchuss = () => { rauschen(.32, 'lowpass', 5200, .75, 0, 260); klang('sine', 150, 38, .22, .75); };
+const tonLeer = () => { rauschen(.03, 'highpass', 3000, .35); };
+const tonLaden = () => { rauschen(.05, 'highpass', 1800, .35); rauschen(.06, 'bandpass', 900, .5, .2); klang('square', 180, 90, .05, .12, .24); rauschen(.05, 'highpass', 2200, .4, .42); };
+const tonGack = (lage = 1) => {
+  const b = [1250, 950, 720][lage] * zufall(.92, 1.08);
+  klang('sawtooth', b, b * 1.5, .07, .16); klang('sawtooth', b * 1.2, b * .62, .13, .17, .08);
+};
+const tonPlopp = () => { klang('sine', 720, 90, .18, .5); rauschen(.1, 'highpass', 2500, .3); };
+const tonTick = () => klang('square', 980, 980, .03, .07);
+const tonAua = () => { klang('triangle', 300, 120, .28, .35); };
+function tonHorn(folge) {
+  if (!ton) return;
+  let t = 0;
+  for (const [f, d] of folge) {
+    const o = ton.c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
+    const l = ton.c.createBiquadFilter(); l.type = 'lowpass'; l.frequency.value = 1300;
+    const g = ton.c.createGain(), s = ton.c.currentTime + t;
+    g.gain.setValueAtTime(.0001, s); g.gain.exponentialRampToValueAtTime(.2, s + .04); g.gain.setValueAtTime(.2, s + d * .7); g.gain.exponentialRampToValueAtTime(.001, s + d);
+    o.connect(l); l.connect(g); g.connect(ton.haupt); o.start(s); o.stop(s + d + .02);
+    t += d * .95;
+  }
+}
+const HORN_START = [[392, .14], [523, .14], [659, .14], [784, .34]];
+const HORN_ENDE = [[784, .22], [659, .22], [523, .22], [659, .22], [784, .22], [1047, .7]];
+
+function tonAnzeigen() {
+  $('ton-an').hidden = stumm; $('ton-aus').hidden = !stumm;
+  $('ton-knopf').setAttribute('aria-label', stumm ? 'Ton an' : 'Ton aus');
+}
+
+/* ---------- Spielablauf ---------- */
+function patronenBauen() {
+  for (let i = 0; i < MAGAZIN; i++) { const s = document.createElement('i'); s.className = 'huelse'; $('patronen').append(s); }
+}
+function patronenZeigen() {
+  [...$('patronen').children].forEach((s, i) => s.classList.toggle('leer', i >= G.munition));
+  const leer = G.munition === 0 && G.laden <= 0;
+  $('laden').classList.toggle('mahnt', leer);
+  $('laden-text').textContent = G.laden > 0 ? 'Lädt …' : leer ? 'Laden!' : 'Nachladen';
+}
+function punkteZeigen() { $('punkte').textContent = G.punkte; }
+let letzteAnzeige = -1;
+function zeitZeigen() {
+  const s = Math.ceil(G.zeit);
+  if (s === letzteAnzeige) return;
+  if (G.phase === 'jagd' && s <= 10 && s > 0 && letzteAnzeige !== -1) tonTick();
+  letzteAnzeige = s;
+  $('zeit').textContent = s;
+  $('zeit-box').classList.toggle('knapp', s <= 10);
+}
+function zeigeNur(welche) {
+  for (const id of ['menue', 'ende', 'pause', 'lobby', 'raum', 'ehrung', 'rast']) $(id).hidden = id !== welche;
+  if (apiBasis && (welche === 'menue' || welche === 'ende')) serverListeLaden();
+  const jagd = imSpiel() && !welche, mehr = G.modus === 'mehr';
+  $('hud').hidden = $('laden').hidden = !jagd;
+  $('pause-knopf').hidden = !jagd;
+  $('pause-knopf').title = mehr ? 'Rast oder Runde verlassen (Esc)' : 'Pause (P)';
+  $('pause-knopf').setAttribute('aria-label', mehr ? 'Rast' : 'Pause');
+  $('rangliste').hidden = !jagd || !mehr;
+  if (!jagd) $('countdown').hidden = true;
+  box.classList.toggle('jagd', jagd);
+}
+function rundeStarten() {
+  tonStarten();
+  Object.assign(G, { modus: 'solo', phase: 'jagd', pausiert: false, punkte: 0, zeit: DAUER, munition: MAGAZIN, laden: 0, schuesse: 0, treffer: 0, kameraV: 0, kamera: kameraMax / 2, uhr: 0 });
+  G.strecke = { fern: 0, mittel: 0, nah: 0, versteckt: 0, ballon: 0, schild: 0, scheuche: 0, laden: 0 };
+  G.ballonPlan = [zufall(62, 72), zufall(22, 34)];
+  // Übrig gebliebene Hühner einer Mehrspieler-Runde gehören nicht ins Alleinspiel
+  for (let i = huehner.length - 1; i >= 0; i--) if (huehner[i].mp) huehner.splice(i, 1);
+  ballon = null; schilder = 3; scheucheWackeln = 0; scheucheSperre = 0;
+  letzteAnzeige = -1; leerHinweis = 0; mausDrin = false;
+  punkteZeigen(); patronenZeigen(); zeitZeigen();
+  zeigeNur(null);
+  tonHorn(HORN_START);
+  rundeAnmelden();
+}
+function pausieren() {
+  if (G.phase !== 'jagd' || G.pausiert || G.modus === 'mehr') return;
+  G.pausiert = true; zeigeNur('pause');
+  $('weiter').focus({ preventScroll: true });
+}
+function weiterjagen() {
+  if (G.phase !== 'jagd') return;
+  tonStarten();
+  G.pausiert = false; mausDrin = false; zeigeNur(null);
+}
+function zumMenue() { G.phase = 'menue'; G.pausiert = false; zeigeNur('menue'); }
+// Jedes Nachladen kostet eine Schachtel Patronen; was noch im Magazin steckt, ist verloren
+function nachladen() {
+  if (G.phase !== 'jagd' || G.pausiert || G.laden > 0 || G.munition === MAGAZIN) return;
+  G.laden = LADEZEIT; tonLaden(); patronenZeigen();
+  G.strecke.laden = (G.strecke.laden || 0) + 1;
+  textZeigen(1, (cssB - 70) / massstab + G.kamera, (cssH - 110) / massstab - obenY, '−' + LADEKOSTEN, '#ff6a13', 34);
+  if (G.modus === 'mehr') mpSenden({ typ: 'laden' });  // Abzug rechnet der Server
+  else { G.punkte -= LADEKOSTEN; punkteZeigen(); }
+}
+function urteil(p) {
+  if (p >= 1200) return 'Jagdkönig! Das Moor verneigt sich.';
+  if (p >= 700) return 'Waidmannsheil, eine stattliche Strecke.';
+  if (p >= 300) return 'Ordentlich geschossen.';
+  if (p > 0) return 'Die Hühner lachen noch ein bisschen.';
+  return 'Das Moor bleibt unbehelligt.';
+}
+// Aufschlüsselung einer Strecke mit Punkten je Posten; versteckt = { n, p }
+function streckeZeigen(t, s, treffer, schuesse, punkte) {
+  t.textContent = '';
+  const zeile = (name, n, w, kl) => {
+    const tr = document.createElement('tr'); if (kl) tr.className = kl;
+    for (const x of [name, n, w]) { const td = document.createElement('td'); td.textContent = x; tr.append(td); }
+    t.append(tr);
+  };
+  zeile('Ferne Hühner', s.fern + ' ×', s.fern * 25);
+  zeile('Mittlere Hühner', s.mittel + ' ×', s.mittel * 10);
+  zeile('Nahe Hühner', s.nah + ' ×', s.nah * 5);
+  if (s.versteckt && s.versteckt.n) zeile('Versteckte Hühner', s.versteckt.n + ' ×', s.versteckt.p);
+  if (s.ballon) zeile('Ballons', s.ballon + ' ×', s.ballon * 50);
+  if (s.schild) zeile('Wegweiser-Schilder', s.schild + ' ×', s.schild * 10);
+  if (s.scheuche) zeile('Vogelscheuche', s.scheuche + ' ×', -s.scheuche * 25);
+  if (s.laden) zeile('Nachladen', s.laden + ' ×', -s.laden * LADEKOSTEN);
+  const q = schuesse ? Math.round(treffer / schuesse * 100) : 0;
+  zeile(`Trefferquote ${q} %`, treffer + ' / ' + schuesse, punkte, 'summe');
+}
+function rundeEnde() {
+  G.phase = 'ende'; ballon = null; blitz = 0;
+  tonHorn(HORN_ENDE);
+  $('ende-punkte').textContent = G.punkte;
+  $('ende-urteil').textContent = urteil(G.punkte);
+  streckeZeigen($('ende-tabelle'), G.strecke, G.treffer, G.schuesse, G.punkte);
+  const form = $('eintragen');
+  form.hidden = G.punkte <= 0;
+  $('name').value = speicherLesen('moorjagd.name') || '';
+  $('eintragen-knopf').disabled = false; $('eintragen-knopf').textContent = 'Strecke eintragen';
+  $('eintragen-hinweis').textContent = '';
+  neuerEintrag = null; lokalGesichert = false; listeZeigen();
+  zeigeNur('ende');
+}
+
+/* ---------- Hühner ---------- */
+function spawn() {
+  const w = Math.random();
+  const i = w < .4 ? 0 : w < .75 ? 1 : 2, l = LAGE[i];
+  const breite = ebeneBreite(l.p);
+  const links = G.kamera * l.p, rechts = links + sichtB, rand = l.groesse;
+  const dir = Math.random() < .5 ? 1 : -1;
+  const x = Math.random() < .72 ? (dir > 0 ? links - rand : rechts + rand) : (dir > 0 ? -rand : breite + rand);
+  const faktor = klemme(sichtB / 1067, .7, 1);
+  const y0 = l.band[0] - obenY * .5;
+  huehner.push({
+    lage: i, x, y: zufall(Math.max(y0, -obenY + 70), l.band[1]), y0: 0, v: dir * zufall(...l.tempo) * faktor,
+    schlag: Math.random() * 4, schlagTempo: zufall(9, 13), bogen: zufall(0, TAU), hub: zufall(4, 16) * (l.groesse / 80),
+    zustand: 'flug', vy: 0, dreh: 0, drehV: 0, alpha: 1, t: 0, richtung: dir,
+  });
+}
+function fallendesHuhn(lage, x, y, richtung, vx) {
+  huehner.push({ lage, x, y, y0: 0, v: vx, schlag: 0, schlagTempo: 0, bogen: 0, hub: 0, zustand: 'fall', vy: -180, dreh: 0, drehV: zufall(5, 9) * richtung, alpha: 1, t: 0, richtung });
+}
+function federnStreuen(p, x, y, n, groesse = 1) {
+  n = ruhig ? Math.ceil(n / 2) : n;
+  for (let i = 0; i < n && federn.length < 160; i++) {
+    const a = zufall(0, TAU), v = zufall(40, 190) * groesse;
+    federn.push({ p, x, y, vx: cos(a) * v, vy: sin(a) * v - 40, dreh: zufall(0, TAU), drehV: zufall(-5, 5), t: 0, dauer: zufall(.8, 1.6), g: zufall(4, 8) * groesse, farbe: ['#8a4a22', '#b56d36', '#efe3c9', '#5b2f15'][i % 4] });
+  }
+}
+function textZeigen(p, x, y, text, farbe = '#fff6d6', g = 42) {
+  texte.push({ p, x, y, text, farbe, g, t: 0 });
+}
+function bodenhoehe(lage, x) { return lage === 2 ? hoeheNah(x) + 2 : lage === 1 ? hoeheMitte(x) : 9999; }
+
+function ortPosition(o) {
+  const a = o.hub;
+  switch (o.art) {
+    case 'eiche': return { x: o.x + 62 * a, y: o.grund - 78, r: 1 };
+    case 'heu': return { x: o.x, y: o.grund - 48 - 74 * a, r: 1 };
+    case 'brunnen': return { x: o.x, y: o.grund - 24 - 52 * a, r: -1 };
+    default: return { x: o.x, y: o.grund - 72 - 25 * a, r: 1 };
+  }
+}
+function trefferSuchen(ux, uy, tol) {
+  for (let lage = 2; lage >= 0; lage--) {
+    const l = LAGE[lage], wx = ux + G.kamera * l.p;
+    let best = null, bestD = 1;
+    const test = (x, y, rx, ry) => { const dx = (wx - x) / (rx + tol), dy = (uy - y) / (ry + tol); return dx * dx + dy * dy; };
+    for (const h of huehner) {
+      if (h.lage !== lage || h.zustand !== 'flug') continue;
+      const d = test(h.x, h.y, l.groesse * .5, l.groesse * .4);
+      if (d <= bestD) { bestD = d; best = { art: 'huhn', h }; }
+    }
+    if (best) return best;
+    for (const o of orte) {
+      if (o.lage !== lage || o.hub < .45) continue;
+      const pos = ortPosition(o);
+      if (test(pos.x, pos.y, o.groesse * .46, o.groesse * .46) <= 1) return { art: 'ort', o, pos };
+    }
+    if (lage === 2) {
+      const sx = 300, sy = hoeheNah(sx) + 14;
+      if (schilder > 0 && wx > sx - 66 - tol && wx < sx + 66 + tol && uy > sy - 160 - tol && uy < sy - 86 + tol) return { art: 'schild', x: wx, y: uy };
+      const kx = 1250, ky = hoeheNah(kx) + 12;
+      if (wx > kx - 52 - tol && wx < kx + 52 + tol && uy > ky - 178 - tol && uy < ky + tol) return { art: 'scheuche', x: kx, y: ky - 120 };
+    }
+    if (lage === 0 && ballon && !ballon.platzt) {
+      if (test(ballon.x, ballon.y, 34, 46) <= 1) return { art: 'ballon' };
+    }
+  }
+  return null;
+}
+function schiessen(sx, sy, finger) {
+  if (G.phase !== 'jagd' || G.pausiert || G.laden > 0) return;
+  if (G.munition <= 0) { tonLeer(); leerHinweis = .9; return; }
+  G.munition--; G.schuesse++;
+  tonSchuss(); patronenZeigen();
+  if (!ruhig) { blitz = 1; wackeln = 1; }
+  rueckstoss = 1;
+  letzterSchuss = { x: sx, y: sy, t: .28 };
+  const ux = sx / massstab, uy = sy / massstab - obenY;
+  const z = trefferSuchen(ux, uy, 0) || trefferSuchen(ux, uy, (finger ? 15 : 3) / massstab);
+  if (G.modus === 'mehr') { if (finger) MP.letzterTipp = { x: sx, y: sy }; return mpSchuss(z, ux, uy); }
+  if (!z) { rauchZeigen(ux, uy); return; }
+  anwenden(z, ux, uy);
+}
+function rauchZeigen(ux, uy) { federn.push({ p: 0, x: ux, y: uy, vx: 0, vy: -14, dreh: 0, drehV: 0, t: 0, dauer: .45, g: 9, farbe: 'rauch' }); }
+function huhnFaellt(h) {
+  const l = LAGE[h.lage];
+  h.zustand = 'fall'; h.vy = -160; h.drehV = zufall(5, 9) * h.richtung; h.v *= .35;
+  federnStreuen(l.p, h.x, h.y, 14, l.groesse / 80);
+  tonGack(h.lage);
+}
+function ortFaellt(o) {
+  const pos = ortPosition(o), l = LAGE[o.lage];
+  o.phase = 'warten'; o.t = zufall(5, 10); o.hub = 0;
+  fallendesHuhn(o.lage === 1 ? 1 : 2, pos.x, pos.y, 1, 0);
+  federnStreuen(l.p, pos.x, pos.y, 12, o.groesse / 70);
+  tonGack(o.lage);
+}
+function ballonPlatzt() {
+  ballon.platzt = true; ballon.vy = 0;
+  federnStreuen(LAGE[0].p, ballon.x, ballon.y, 18, 1);
+  tonPlopp(); tonGack(0);
+}
+function anwenden(z, ux, uy) {
+  if (z.art === 'huhn') {
+    const h = z.h, l = LAGE[h.lage];
+    huhnFaellt(h);
+    G.punkte += l.punkte; G.treffer++; G.strecke[l.name]++;
+    textZeigen(l.p, h.x, h.y - l.groesse * .5, '+' + l.punkte, h.lage === 0 ? '#ffd24a' : '#fff6d6', 26 + l.groesse * .12);
+  } else if (z.art === 'ort') {
+    const { o, pos } = z, l = LAGE[o.lage];
+    ortFaellt(o);
+    G.punkte += o.punkte; G.treffer++;
+    if (!G.strecke.versteckt) G.strecke.versteckt = { n: 0, p: 0 };
+    G.strecke.versteckt.n++; G.strecke.versteckt.p += o.punkte;
+    textZeigen(l.p, pos.x, pos.y - 40, '+' + o.punkte, '#ffd24a', 44);
+  } else if (z.art === 'schild') {
+    schilder--; G.punkte += 10; G.treffer++; G.strecke.schild++;
+    federn.push({ p: 1, x: z.x, y: z.y, vx: zufall(-40, 40), vy: -90, dreh: 0, drehV: zufall(-5, 5), t: 0, dauer: 1, g: 26, farbe: '#a07a46', grav: 620 });
+    textZeigen(1, z.x, z.y - 22, '+10', '#fff6d6', 38);
+    klang('square', 240, 90, .07, .22);
+  } else if (z.art === 'scheuche') {
+    if (scheucheSperre > 0) return;
+    scheucheSperre = 1; scheucheWackeln = 1;
+    G.punkte -= 25; G.strecke.scheuche++;
+    textZeigen(1, z.x, z.y - 72, '−25', '#ff6a13', 50);
+    textZeigen(1, z.x, z.y - 34, 'Die war unschuldig!', '#fff6d6', 26);
+    federnStreuen(1, z.x, z.y, 8, 1);
+    tonAua();
+  } else if (z.art === 'ballon') {
+    ballonPlatzt();
+    G.punkte += 50; G.treffer++; G.strecke.ballon++;
+    textZeigen(LAGE[0].p, ballon.x, ballon.y - 40, '+50', '#ff6a13', 44);
+  }
+  punkteZeigen();
+}
+
+function aktualisieren(dt) {
+  G.uhr += dt;
+  muehleWinkel += dt * .55;
+  const mehr = mpJagd(), sJetzt = serverJetzt();
+  if (mehr) mpTakt(dt, sJetzt);
+  // Kamera
+  if (imSpiel() && !G.pausiert) {
+    let soll = 0;
+    if (tasten.links) soll -= 900;
+    if (tasten.rechts) soll += 900;
+    if (mausDrin) {
+      const zone = Math.min(130, cssB * .14);
+      if (maus.x < zone) soll -= Math.pow(1 - maus.x / zone, 1.6) * 1300;
+      else if (maus.x > cssB - zone) soll += Math.pow(1 - (cssB - maus.x) / zone, 1.6) * 1300;
+    }
+    if (soll) G.kameraV = soll;
+    // Während des Wischens folgt die Sicht dem Finger, der Schwung zählt erst beim Loslassen
+    if (!fingerZiehen) G.kamera = klemme(G.kamera + G.kameraV * dt, 0, kameraMax);
+    G.kameraV *= Math.pow(.008, dt);
+    if (Math.abs(G.kameraV) < 4) G.kameraV = 0;
+  } else if (!imSpiel() && !ruhig) {
+    G.kamera = kameraMax * (.5 + .42 * sin(G.uhr * .045));
+  }
+  const pausiert = G.pausiert;
+  if (pausiert) return;
+  // Wolken
+  for (const w of wolken) { w.x += w.v * dt; if (w.x > sichtB + 40) w.x = -w.b - 40; }
+  // Runde; im Mehrspieler gibt der Server Zeit und Ende vor
+  if (G.phase === 'jagd') {
+    if (mehr) zeitZeigen();
+    else {
+      G.zeit -= dt;
+      if (G.zeit <= 0) { G.zeit = 0; zeitZeigen(); rundeEnde(); }
+      else zeitZeigen();
+    }
+    if (G.laden > 0) { G.laden -= dt; if (G.laden <= 0) { G.laden = 0; G.munition = MAGAZIN; patronenZeigen(); } }
+    if (G.ballonPlan.length && G.zeit < G.ballonPlan[0]) { G.ballonPlan.shift(); ballonStarten(); }
+  }
+  // Nachschub
+  G.naechstes -= dt;
+  if (G.naechstes <= 0 && !mehr) {
+    const dichte = G.phase === 'jagd' ? zufall(.42, .62) - .12 * (1 - G.zeit / DAUER) : zufall(1, 1.5);
+    G.naechstes = dichte;
+    if (huehner.filter(h => h.zustand === 'flug').length < (G.phase === 'jagd' ? 20 : 8)) spawn();
+  }
+  for (let i = huehner.length - 1; i >= 0; i--) {
+    const h = huehner[i], l = LAGE[h.lage];
+    h.t += dt;
+    if (h.zustand === 'flug') {
+      if (h.mp) h.x = mpX(h, l.p, sJetzt);
+      else h.x += h.v * dt;
+      h.schlag += h.schlagTempo * dt;
+      const b = ebeneBreite(l.p);
+      // Nur entfernen, wenn das Huhn hinausfliegt: Mehrspieler-Hühner starten oft außerhalb der eigenen Ebene
+      if ((h.x < -l.groesse - 40 && h.v <= 0) || (h.x > b + l.groesse + 40 && h.v >= 0) || (h.mp && sJetzt - h.u0 > 150)) huehner.splice(i, 1);
+    } else if (h.zustand === 'fall') {
+      h.vy += 1050 * dt; h.y += h.vy * dt; h.x += h.v * dt; h.dreh += h.drehV * dt;
+      const boden = bodenhoehe(h.lage, h.x);
+      if (h.y >= boden - l.groesse * .26) {
+        h.y = boden - l.groesse * .26;
+        h.zustand = 'liegt'; h.t = 0; h.dreh = Math.PI;
+        federnStreuen(l.p, h.x, h.y + 8, 4, .7);
+        if (G.phase === 'jagd' && h.lage === 2) rauschen(.08, 'lowpass', 500, .2);
+      } else if (h.y > 700) huehner.splice(i, 1);
+    } else {
+      if (h.t > 1.1) { h.alpha -= dt * 3; if (h.alpha <= 0) huehner.splice(i, 1); }
+    }
+  }
+  for (let i = federn.length - 1; i >= 0; i--) {
+    const f = federn[i]; f.t += dt;
+    if (f.t >= f.dauer) { federn.splice(i, 1); continue; }
+    f.vx *= Math.pow(.05, dt); f.vy = f.grav ? f.vy + f.grav * dt : f.vy * Math.pow(.05, dt) + 70 * dt;
+    f.x += f.vx * dt; f.y += f.vy * dt; f.dreh += f.drehV * dt;
+  }
+  for (let i = texte.length - 1; i >= 0; i--) { const t = texte[i]; t.t += dt; t.y -= 44 * dt; if (t.t > .95) texte.splice(i, 1); }
+  // Verstecke
+  for (const o of orte) {
+    if (o.phase === 'warten') { if (!mehr) { o.t -= dt; if (o.t <= 0) { o.phase = 'hoch'; o.halten = zufall(1.5, 2.6); } } }
+    else if (o.phase === 'hoch') { o.hub = Math.min(1, o.hub + dt / .24); if (o.hub >= 1) o.phase = 'halten'; }
+    else if (o.phase === 'halten') { o.halten -= dt; if (o.halten <= 0) o.phase = 'runter'; }
+    else { o.hub = Math.max(0, o.hub - dt / .22); if (o.hub <= 0) { o.phase = 'warten'; o.t = zufall(2.5, 7); } }
+  }
+  // Ballon
+  if (ballon) {
+    if (ballon.platzt) {
+      ballon.vy += 420 * dt; ballon.y += ballon.vy * dt;
+      if (ballon.y > 500) ballon = null;
+    } else {
+      if (ballon.mp) ballon.x = mpX(ballon, LAGE[0].p, sJetzt);
+      else ballon.x += ballon.v * dt;
+      ballon.y += sin(G.uhr * .7) * 5 * dt;
+      if ((ballon.x < -90 && ballon.v <= 0) || (ballon.x > ebeneBreite(LAGE[0].p) + 90 && ballon.v >= 0)) ballon = null;
+    }
+  }
+  blitz = Math.max(0, blitz - dt * 11); wackeln = Math.max(0, wackeln - dt * 7); rueckstoss = Math.max(0, rueckstoss - dt * 7);
+  leerHinweis = Math.max(0, leerHinweis - dt); scheucheWackeln = Math.max(0, scheucheWackeln - dt * 1.3); scheucheSperre = Math.max(0, scheucheSperre - dt);
+  if (letzterSchuss) { letzterSchuss.t -= dt; if (letzterSchuss.t <= 0) letzterSchuss = null; }
+}
+function ballonStarten() {
+  const p = LAGE[0].p, b = ebeneBreite(p), links = G.kamera * p;
+  // Auf der Seite auftauchen, die gerade weiter weg ist, damit sich das Umsehen lohnt
+  const rechtsMehr = links < (b - sichtB) / 2;
+  const x = rechtsMehr ? Math.min(b - 30, links + sichtB + 240) : Math.max(30, links - 240);
+  ballon = { x, y: zufall(120, 210) - obenY * .3, v: (rechtsMehr ? -1 : 1) * zufall(16, 26), platzt: false, vy: 0 };
+}
+
+/* ---------- Zeichnen ---------- */
+function ebeneMalen(e) {
+  const sb = sichtB * e.rs;
+  const sx = Math.min(Math.round(G.kamera * e.p * e.rs), Math.max(0, e.c.width - sb));
+  ctx.drawImage(e.c, sx, 0, sb, e.c.height, 0, 0, sichtB, e.c.height / e.rs);
+}
+function huhnMalen(h) {
+  const l = LAGE[h.lage];
+  const sx = h.x - G.kamera * l.p;
+  if (sx < -120 || sx > sichtB + 120) return;
+  const d = l.groesse * 140 / 120;
+  let y = h.y, f;
+  if (h.zustand === 'flug') {
+    y += sin(h.schlag * .35 + h.bogen) * h.hub;
+    f = [0, 1, 2, 3, 2, 1][Math.floor(h.schlag) % 6];
+  } else f = 4;
+  ctx.save();
+  if (h.alpha < 1) ctx.globalAlpha = Math.max(0, h.alpha);
+  ctx.translate(sx, y);
+  ctx.scale(h.richtung, 1);
+  if (h.dreh) ctx.rotate(h.dreh);
+  ctx.drawImage(sprites[h.lage][f], -d / 2, -d / 2, d, d);
+  ctx.restore();
+}
+function ortHuhnMalen(o) {
+  if (o.hub <= 0) return;
+  const p = LAGE[o.lage].p, pos = ortPosition(o);
+  const sx = pos.x - G.kamera * p, d = o.groesse * 140 / 120;
+  ctx.save(); ctx.translate(sx, pos.y); ctx.scale(pos.r, 1);
+  ctx.drawImage(sprites[2][5], -d / 2, -d / 2, d, d);
+  ctx.restore();
+}
+function linienStil(farbe, b) { ctx.strokeStyle = farbe; ctx.lineWidth = b; ctx.lineCap = 'round'; }
+function brunnenFront(sx, g) {
+  ctx.fillStyle = '#8f8d7a'; ctx.strokeStyle = '#3d3b2c'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(sx - 50, g - 42); ctx.lineTo(sx - 50, g); ctx.ellipse(sx, g, 50, 13, 0, Math.PI, 0, true); ctx.lineTo(sx + 50, g - 42); ctx.ellipse(sx, g - 42, 50, 13, 0, 0, Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#6e6c5a';
+  for (let i = 0; i < 6; i++) ctx.fillRect(sx - 42 + i * 15, g - 28 + (i % 2) * 11, 11, 6);
+}
+function heuFront(sx, g) {
+  ctx.fillStyle = '#d8ac4c'; ctx.strokeStyle = '#6a4d17'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(sx - 94, g + 4); ctx.quadraticCurveTo(sx - 90, g - 118, sx, g - 112); ctx.quadraticCurveTo(sx + 90, g - 118, sx + 94, g + 4); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = 'rgba(106,77,23,.5)'; ctx.lineWidth = 1.6;
+  for (let i = 0; i < 14; i++) {
+    const x = sx - 74 + i * 11.2, y = g - 12 - (i * 37 % 78);
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (i % 2 ? 9 : -9), y + 14); ctx.stroke();
+  }
+}
+function stammFront(sx, g) {
+  stammPfad(ctx, sx, g);
+  ctx.fillStyle = '#4a3322'; ctx.fill();
+  ctx.strokeStyle = 'rgba(25,14,6,.5)'; ctx.lineWidth = 2;
+  for (const [a, b, h] of [[-16, -30, 90], [8, -60, 100], [-6, -150, 90], [20, -180, 60]]) {
+    ctx.beginPath(); ctx.moveTo(sx + a, g + b); ctx.quadraticCurveTo(sx + a + 5, g + b - h * .5, sx + a - 2, g + b - h); ctx.stroke();
+  }
+}
+function wegweiserMalen(sx, g) {
+  linienStil('#3c2a1a', 9);
+  ctx.lineCap = 'butt';
+  ctx.beginPath(); ctx.moveTo(sx, g); ctx.lineTo(sx, g - 172); ctx.stroke();
+  const tafeln = [['Hochmoor', -1], ['Krug 3 km', 1], ['Torfstich', -1]];
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `700 17px ${FONT}`;
+  for (let i = 0; i < schilder; i++) {
+    const y = g - 156 + i * 26, [t, dir] = tafeln[i], x = sx + dir * 30;
+    ctx.fillStyle = '#c29a5c'; ctx.strokeStyle = '#3c2a1a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x - 38, y - 10); ctx.lineTo(x + 34 * (dir > 0 ? 1 : 1.1), y - 10);
+    if (dir > 0) { ctx.lineTo(x + 46, y); ctx.lineTo(x + 34, y + 10); ctx.lineTo(x - 38, y + 10); }
+    else { ctx.lineTo(x + 38, y + 10); ctx.lineTo(x - 38, y + 10); ctx.lineTo(x - 50, y); }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#2d1e10'; ctx.fillText(t, x + (dir > 0 ? 2 : -4), y + 1);
+  }
+}
+function scheucheMalen(sx, g) {
+  const w = scheucheWackeln > 0 ? sin(scheucheWackeln * 22) * scheucheWackeln * .22 : sin(G.uhr * .8) * .012;
+  ctx.save(); ctx.translate(sx, g); ctx.rotate(w);
+  linienStil('#4a3421', 8); ctx.lineCap = 'butt';
+  ctx.beginPath(); ctx.moveTo(0, 8); ctx.lineTo(0, -150); ctx.moveTo(-52, -112); ctx.lineTo(52, -112); ctx.stroke();
+  ctx.fillStyle = '#3e5a6b'; ctx.strokeStyle = '#1e2c33'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(-32, -124); ctx.lineTo(32, -124); ctx.lineTo(25, -46); ctx.lineTo(13, -38); ctx.lineTo(4, -48); ctx.lineTo(-8, -36); ctx.lineTo(-25, -46); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#a4553a'; ctx.fillRect(-6, -92, 14, 14); ctx.strokeRect(-6, -92, 14, 14);
+  linienStil('#d8ac4c', 2.6);
+  for (const [x, y, dx, dy] of [[-52, -112, -11, 7], [-52, -112, -13, -3], [-52, -112, -8, 12], [52, -112, 11, 7], [52, -112, 13, -3], [52, -112, 8, 12], [-14, -42, -3, 13], [8, -42, 3, 13]]) {
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx, y + dy); ctx.stroke();
+  }
+  ctx.fillStyle = '#e4d1a0'; ctx.strokeStyle = '#6a5a34'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(0, -146, 21, 0, TAU); ctx.fill(); ctx.stroke();
+  linienStil('#2a2115', 2.6);
+  ctx.beginPath(); ctx.moveTo(-10, -152); ctx.lineTo(-4, -146); ctx.moveTo(-4, -152); ctx.lineTo(-10, -146); ctx.moveTo(4, -152); ctx.lineTo(10, -146); ctx.moveTo(10, -152); ctx.lineTo(4, -146); ctx.moveTo(-8, -136); ctx.quadraticCurveTo(0, -131, 8, -136); ctx.stroke();
+  ctx.fillStyle = '#2b2b24'; ctx.strokeStyle = '#111';
+  ctx.beginPath(); ctx.moveTo(-32, -161); ctx.lineTo(32, -161); ctx.lineTo(19, -167); ctx.lineTo(13, -194); ctx.lineTo(-12, -192); ctx.lineTo(-19, -167); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+function ballonMalen() {
+  const p = LAGE[0].p, sx = ballon.x - G.kamera * p;
+  if (sx < -90 || sx > sichtB + 90) return;
+  ctx.save(); ctx.translate(sx, ballon.y);
+  if (!ballon.platzt) {
+    const bahnen = ['#ff6a13', '#f4e6c2', '#7a4a8c', '#f4e6c2', '#ff6a13'];
+    for (let i = 0; i < 5; i++) {
+      const a = 1 - i * .4;
+      ctx.fillStyle = bahnen[i];
+      ctx.beginPath();
+      ctx.moveTo(0, -46); ctx.bezierCurveTo(a * 56, -46, a * 44, 16, a * 8, 30); ctx.lineTo((a - .4) * 8, 30); ctx.bezierCurveTo((a - .4) * 44, 16, (a - .4) * 56, -46, 0, -46);
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#3a2614'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-34, -6); ctx.lineTo(-9, 48); ctx.moveTo(34, -6); ctx.lineTo(9, 48); ctx.stroke();
+  }
+  ctx.fillStyle = '#7b5426'; ctx.fillRect(-11, 48, 22, 16);
+  const d = 28;
+  ctx.drawImage(sprites[0][ballon.platzt ? 4 : 5], -d / 2 + 2, 30, d, d);
+  ctx.fillStyle = '#7b5426'; ctx.fillRect(-11, 54, 22, 10);
+  ctx.restore();
+}
+function muehlenFluegel(sx, g) {
+  ctx.save(); ctx.translate(sx, g - 196); ctx.rotate(muehleWinkel);
+  for (let i = 0; i < 4; i++) {
+    ctx.rotate(TAU / 4);
+    ctx.fillStyle = '#4a3322'; ctx.fillRect(-2.5, 0, 5, 112);
+    ctx.fillStyle = 'rgba(244,230,194,.88)'; ctx.strokeStyle = '#4a3322'; ctx.lineWidth = 1.6;
+    ctx.fillRect(2, 22, 22, 88); ctx.strokeRect(2, 22, 22, 88);
+    ctx.beginPath(); for (let j = 1; j < 4; j++) { ctx.moveTo(2, 22 + j * 22); ctx.lineTo(24, 22 + j * 22); } ctx.stroke();
+  }
+  ctx.restore();
+  ctx.fillStyle = '#2e1e13'; ctx.beginPath(); ctx.arc(sx, g - 196, 8, 0, TAU); ctx.fill();
+}
+function zeichnen() {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(himmel, 0, 0, bild.width, bild.height);
+  const zitter = wackeln > 0 ? 7 * wackeln : 0;
+  const kx = zitter ? zufall(-zitter, zitter) : 0, ky = zitter ? zufall(-zitter, zitter) : 0;
+  const m = massstab * dpr;
+  ctx.setTransform(m, 0, 0, m, kx * dpr, (obenY * massstab + ky) * dpr);
+
+  for (const w of wolken) ctx.drawImage(w.c, w.x, w.y, w.b, w.h);
+  ebeneMalen(ebeneFern);
+  if (ballon) ballonMalen();
+  for (const h of huehner) if (h.lage === 0) huhnMalen(h);
+
+  ebeneMalen(ebeneMitte);
+  const mo = orte.find(o => o.art === 'muehle');
+  if (mo) {
+    const sx = mo.x - G.kamera * LAGE[1].p;
+    if (sx > -200 && sx < sichtB + 200) {
+      if (mo.hub > 0) {
+        ctx.save(); ctx.beginPath(); ctx.rect(sx - 20, mo.grund - 117, 40, 40); ctx.clip();
+        const pos = ortPosition(mo), d = mo.groesse * 1.4;
+        ctx.drawImage(sprites[1][5], sx - d / 2, pos.y - d / 2, d, d);
+        ctx.restore();
+      }
+      muehlenFluegel(sx, mo.grund);
+    }
+  }
+  for (const h of huehner) if (h.lage === 1) huhnMalen(h);
+
+  ebeneMalen(ebeneNah);
+  const k = G.kamera;
+  for (const o of orte) {
+    if (o.lage !== 2) continue;
+    const sx = o.x - k;
+    if (sx < -260 || sx > sichtB + 260) continue;
+    ortHuhnMalen(o);
+    if (o.art === 'eiche') stammFront(sx, o.grund);
+    else if (o.art === 'heu') heuFront(sx, o.grund);
+    else brunnenFront(sx, o.grund);
+  }
+  { const sx = 300 - k; if (sx > -110 && sx < sichtB + 110) wegweiserMalen(sx, hoeheNah(300) + 14); }
+  { const sx = 1250 - k; if (sx > -110 && sx < sichtB + 110) scheucheMalen(sx, hoeheNah(1250) + 12); }
+  for (const h of huehner) if (h.lage === 2) huhnMalen(h);
+  ebeneMalen(ebeneVorn);
+
+  for (const f of federn) {
+    const a = 1 - f.t / f.dauer, sx = f.x - k * f.p;
+    ctx.save(); ctx.translate(sx, f.y); ctx.rotate(f.dreh);
+    if (f.farbe === 'rauch') {
+      ctx.globalAlpha = a * .7; ctx.fillStyle = '#e8e2d0';
+      ctx.beginPath(); ctx.arc(0, 0, f.g + 16 * (1 - a), 0, TAU); ctx.fill();
+    } else if (f.grav) {
+      ctx.globalAlpha = Math.min(1, a * 2); ctx.fillStyle = f.farbe;
+      ctx.fillRect(-f.g * 1.4, -f.g * .4, f.g * 2.8, f.g * .8);
+    } else {
+      ctx.globalAlpha = Math.min(1, a * 1.8); ctx.fillStyle = f.farbe;
+      ctx.beginPath(); ctx.ellipse(0, 0, f.g, f.g * .34, 0, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const t of texte) {
+    const sx = t.x - k * t.p;
+    ctx.globalAlpha = Math.min(1, (0.95 - t.t) * 3);
+    ctx.font = `800 ${t.g}px ${FONT}`;
+    ctx.lineJoin = 'round'; ctx.lineWidth = t.g * .17; ctx.strokeStyle = '#1b1208';
+    ctx.strokeText(t.text, sx, t.y); ctx.fillStyle = t.farbe; ctx.fillText(t.text, sx, t.y);
+  }
+  ctx.globalAlpha = 1;
+
+  // Ab hier in CSS-Pixeln
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (blitz > 0) { ctx.fillStyle = `rgba(255,240,205,${blitz * .22})`; ctx.fillRect(0, 0, cssB, cssH); }
+  if (imSpiel() && !G.pausiert) {
+    uebersichtMalen();
+    if (ballon && !ballon.platzt) ballonPfeil();
+    if (G.modus === 'mehr') fremdeKreuze();
+    const z = mausDrin && !fingerAktiv ? maus : letzterSchuss;
+    if (z) fadenkreuz(z.x, z.y, z === letzterSchuss ? letzterSchuss.t / .28 : 1, G.modus === 'mehr' ? farbeVon(MP.ich) : null);
+    if (leerHinweis > 0) {
+      const p = z || { x: cssB / 2, y: cssH / 2 };
+      ctx.textAlign = 'center';
+      ctx.font = `800 30px ${FONT}`; ctx.lineWidth = 5; ctx.strokeStyle = '#1b1208'; ctx.fillStyle = '#ff6a13';
+      const py = klemme(p.y - 38, 80, cssH - 20), px = klemme(p.x, 70, cssB - 70);
+      ctx.strokeText('Nachladen!', px, py); ctx.fillText('Nachladen!', px, py);
+    }
+  }
+}
+function fadenkreuz(x, y, alpha, eigene) {
+  const r = 17 + rueckstoss * 9;
+  ctx.save(); ctx.globalAlpha = alpha;
+  for (const [farbe, b] of [['rgba(15,10,5,.8)', 4.5], [eigene || '#fffbe9', 2]]) {
+    ctx.strokeStyle = farbe; ctx.lineWidth = b; ctx.lineCap = 'butt';
+    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU);
+    ctx.moveTo(x - r - 9, y); ctx.lineTo(x - r + 8, y); ctx.moveTo(x + r - 8, y); ctx.lineTo(x + r + 9, y);
+    ctx.moveTo(x, y - r - 9); ctx.lineTo(x, y - r + 8); ctx.moveTo(x, y + r - 8); ctx.lineTo(x, y + r + 9);
+    ctx.stroke();
+  }
+  ctx.fillStyle = eigene ? '#fffbe9' : '#ff6a13'; ctx.beginPath(); ctx.arc(x, y, 2.4, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+// Fadenkreuz eines Mitjägers: dünner, mit Namen darunter
+function fadenkreuzFremd(x, y, farbe, name, rueck) {
+  const r = 14 + rueck * 7;
+  ctx.save(); ctx.lineCap = 'butt';
+  for (const [f, b] of [['rgba(15,10,5,.75)', 4], [farbe, 2]]) {
+    ctx.strokeStyle = f; ctx.lineWidth = b;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, TAU);
+    ctx.moveTo(x - r - 7, y); ctx.lineTo(x - r + 6, y); ctx.moveTo(x + r - 6, y); ctx.lineTo(x + r + 7, y);
+    ctx.moveTo(x, y - r - 7); ctx.lineTo(x, y - r + 6); ctx.moveTo(x, y + r - 6); ctx.lineTo(x, y + r + 7);
+    ctx.stroke();
+  }
+  ctx.font = `700 14px ${TEXT_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.lineJoin = 'round'; ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(15,10,5,.85)';
+  ctx.strokeText(name, x, y + r + 9); ctx.fillStyle = farbe; ctx.fillText(name, x, y + r + 9);
+  ctx.restore();
+}
+function fremdeKreuze() {
+  for (const [id, a] of MP.andere) {
+    const j = jaegerVon(id);
+    if (!j) continue;
+    // Hochkant-Geräte sehen mehr Himmel: was über dem eigenen Bild liegt, bleibt am oberen Rand
+    const farbe = FARBEN[j.farbe] || '#fff', x = (a.x - G.kamera) * massstab, y = klemme((a.y + obenY) * massstab, 24, cssH - 40);
+    if (x > -12 && x < cssB + 12) { fadenkreuzFremd(x, y, farbe, j.name, a.rueck); continue; }
+    // Außerhalb der Sicht: kleiner Pfeil am Rand in seiner Farbe
+    const links = x <= -12, px = links ? 9 : cssB - 9, py = klemme(y, 90, cssH - 60);
+    ctx.save(); ctx.translate(px, py); if (links) ctx.scale(-1, 1);
+    ctx.fillStyle = farbe; ctx.strokeStyle = 'rgba(15,10,5,.85)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(-7, -9); ctx.lineTo(-7, 9); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+}
+function uebersichtMalen() {
+  // Kleine Leiste: wo im Panorama stehe ich?
+  const b = Math.min(150, cssB * .26), h = 6, x = (cssB - b) / 2 - (cssB < 560 ? 44 : 0), y = cssH - 18;
+  ctx.fillStyle = 'rgba(27,31,19,.72)'; ctx.fillRect(x - 2, y - 2, b + 4, h + 4);
+  const anteil = sichtB / Math.max(WELT, sichtB);
+  const px = x + (kameraMax ? G.kamera / kameraMax : 0) * b * (1 - anteil);
+  ctx.fillStyle = '#dcb65f'; ctx.fillRect(px, y, b * anteil, h);
+  if (ballon && !ballon.platzt) {
+    const wo = klemme(((ballon.x - sichtB / 2) / LAGE[0].p + sichtB / 2) / WELT, 0, 1);
+    ctx.fillStyle = '#ff6a13'; ctx.beginPath(); ctx.arc(x + wo * b, y + 3, 5, 0, TAU); ctx.fill();
+  }
+}
+function ballonPfeil() {
+  const sx = (ballon.x - G.kamera * LAGE[0].p) * massstab, sy = (ballon.y + obenY) * massstab;
+  if (sx > 0 && sx < cssB) return;
+  const links = sx <= 0, x = links ? 26 : cssB - 26, y = klemme(sy, 90, cssH - 110);
+  ctx.save(); ctx.translate(x, y); if (links) ctx.scale(-1, 1);
+  ctx.fillStyle = '#ff6a13'; ctx.strokeStyle = '#1b1208'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -14); ctx.lineTo(-8, 14); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  ctx.textAlign = links ? 'left' : 'right'; ctx.font = `800 18px ${FONT}`; ctx.lineWidth = 4; ctx.strokeStyle = '#1b1208'; ctx.fillStyle = '#fff6d6';
+  const tx = links ? x + 20 : x - 20;
+  ctx.strokeText('Ballon', tx, y); ctx.fillText('Ballon', tx, y);
+}
+
+let zuletzt = 0;
+function schleife(jetzt) {
+  const dt = Math.min(.05, (jetzt - zuletzt) / 1000 || 0);
+  zuletzt = jetzt;
+  aktualisieren(dt);
+  zeichnen();
+  requestAnimationFrame(schleife);
+}
+
+/* ---------- Eingabe ---------- */
+const maus = { x: 0, y: 0 };
+let mausDrin = false, fingerAktiv = false, fingerZiehen = false, letzterSchuss = null;
+const finger = new Map();
+const tasten = { links: false, rechts: false };
+
+bild.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse') {
+    fingerAktiv = false; mausDrin = true;
+    const r = bild.getBoundingClientRect();
+    maus.x = e.clientX - r.left; maus.y = e.clientY - r.top;
+    if (e.button === 0) schiessen(maus.x, maus.y, false);
+    else if (e.button === 2) nachladen();
+    e.preventDefault();
+    return;
+  }
+  fingerAktiv = true; mausDrin = false;
+  finger.set(e.pointerId, { x0: e.clientX, y0: e.clientY, x: e.clientX, gezogen: false });
+  try { bild.setPointerCapture(e.pointerId); } catch {}
+});
+bild.addEventListener('pointermove', e => {
+  if (e.pointerType === 'mouse') {
+    fingerAktiv = false; mausDrin = true;
+    const r = bild.getBoundingClientRect();
+    maus.x = e.clientX - r.left; maus.y = e.clientY - r.top;
+    return;
+  }
+  const f = finger.get(e.pointerId);
+  if (!f) return;
+  if (!f.gezogen && Math.hypot(e.clientX - f.x0, e.clientY - f.y0) > 11) f.gezogen = true;
+  if (f.gezogen) {
+    const dx = e.clientX - f.x;
+    G.kamera = klemme(G.kamera - dx / massstab, 0, kameraMax);
+    G.kameraV = -dx / massstab * 60 * .5;
+    fingerZiehen = true;
+  }
+  f.x = e.clientX;
+});
+function fingerLoslassen(e, abgebrochen) {
+  if (e.pointerType === 'mouse') return;
+  const f = finger.get(e.pointerId);
+  if (!f) return;
+  finger.delete(e.pointerId);
+  if (!finger.size) fingerZiehen = false;
+  if (abgebrochen || f.gezogen) return;
+  const r = bild.getBoundingClientRect();
+  schiessen(e.clientX - r.left, e.clientY - r.top, true);
+}
+bild.addEventListener('pointerup', e => fingerLoslassen(e, false));
+bild.addEventListener('pointercancel', e => fingerLoslassen(e, true));
+bild.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') mausDrin = false; });
+bild.addEventListener('contextmenu', e => e.preventDefault());
+bild.addEventListener('wheel', e => {
+  if (!imSpiel() || G.pausiert) return;
+  e.preventDefault();
+  G.kamera = klemme(G.kamera + (e.deltaX || e.deltaY) * 1.1, 0, kameraMax);
+}, { passive: false });
+// Doppeltipp-Zoom auf Telefonen unterbinden, die Pointer-Ereignisse kommen trotzdem
+bild.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  const c = e.code;
+  if (c === 'ArrowLeft' || c === 'KeyA') { tasten.links = true; if (imSpiel()) e.preventDefault(); }
+  else if (c === 'ArrowRight' || c === 'KeyD') { tasten.rechts = true; if (imSpiel()) e.preventDefault(); }
+  else if ((c === 'Space' || c === 'KeyR') && G.phase === 'jagd' && !G.pausiert) { e.preventDefault(); nachladen(); }
+  else if (c === 'KeyP' || c === 'Escape') {
+    if (mpJagd()) mpRast(!MP.rast);
+    else if (G.phase === 'jagd') G.pausiert ? weiterjagen() : pausieren();
+  }
+});
+addEventListener('keyup', e => {
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') tasten.links = false;
+  if (e.code === 'ArrowRight' || e.code === 'KeyD') tasten.rechts = false;
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) pausieren(); });
+
+$('los').addEventListener('click', rundeStarten);
+$('nochmal').addEventListener('click', rundeStarten);
+$('weiter').addEventListener('click', weiterjagen);
+$('abbrechen').addEventListener('click', zumMenue);
+$('pause-knopf').addEventListener('click', () => { if (mpJagd()) mpRast(true); else pausieren(); });
+$('laden').addEventListener('click', e => { nachladen(); e.currentTarget.blur(); });
+$('ton-knopf').addEventListener('click', () => {
+  stumm = !stumm; speicherSchreiben('moorjagd.stumm', stumm ? '1' : '0');
+  tonStarten();
+  if (ton) ton.haupt.gain.value = stumm ? 0 : .8;
+  tonAnzeigen();
+});
+if (document.fullscreenEnabled && box.requestFullscreen) {
+  $('vollbild-knopf').hidden = false;
+  $('vollbild-knopf').addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else box.requestFullscreen().catch(() => { $('vollbild-knopf').hidden = true; });
+  });
+}
+
+/* ---------- Streckenliste: eigener Server (data-api), Artefakt-Datenbank oder nur dieses Gerät ---------- */
+const apiBasis = document.documentElement.dataset.api || '';
+let datenbank = null, geteilteListe = null, nurLesen = false, neuerEintrag = null, listeFehler = false;
+let rundenMarke = null, lokalGesichert = false;
+async function apiRuf(pfad, koerper) {
+  const steuer = new AbortController(), wecker = setTimeout(() => steuer.abort(), 8000);
+  try {
+    const r = await fetch(apiBasis + pfad, koerper
+      ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(koerper), signal: steuer.signal }
+      : { cache: 'no-store', signal: steuer.signal });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw Object.assign(new Error('Anfrage abgelehnt'), { code: d.fehler || 'netz' });
+    return d;
+  } finally { clearTimeout(wecker); }
+}
+function serverEintraege(d) {
+  return (Array.isArray(d.eintraege) ? d.eintraege : []).map(e => eintragPruefen(String(e.id), e)).filter(Boolean);
+}
+async function serverListeLaden() {
+  try { geteilteListe = serverEintraege(await apiRuf('/strecken')); listeFehler = false; }
+  catch { geteilteListe = null; listeFehler = true; }
+  listeZeigen();
+}
+// Der Server gibt zu Rundenbeginn eine Marke aus. Nur damit lässt sich die Runde später eintragen.
+async function rundeAnmelden() {
+  if (!apiBasis) return;
+  rundenMarke = null;
+  for (const warten of [0, 3000]) {
+    if (warten) await new Promise(ok => setTimeout(ok, warten));
+    try { rundenMarke = (await apiRuf('/runde', {})).runde; return; } catch {}
+  }
+}
+const SERVER_HINWEISE = {
+  zu_viele: 'Gerade kommen zu viele Einträge. Versuch es gleich noch einmal.',
+  schon_eingetragen: 'Diese Runde steht schon in der Liste.',
+  zu_frueh: 'Diese Runde war zu kurz für die Liste.',
+  zu_alt: 'Diese Runde liegt zu lange zurück für die Liste.',
+  werte: 'Diese Punktzahl nimmt die Liste nicht an.',
+  marke: 'Diese Runde lässt sich nicht mehr eintragen. Starte eine neue.',
+};
+async function serverEintragen(name) {
+  const knopf = $('eintragen-knopf'), hinweis = $('eintragen-hinweis');
+  if (!rundenMarke) {
+    knopf.textContent = 'Nicht eingetragen';
+    hinweis.textContent = 'Beim Start der Runde war die Liste nicht erreichbar, deshalb zählt diese Runde nur auf diesem Gerät.';
+    return;
+  }
+  knopf.textContent = 'Wird eingetragen …';
+  try {
+    const d = await apiRuf('/strecken', { runde: rundenMarke, name, punkte: G.punkte, treffer: G.treffer, schuesse: G.schuesse });
+    rundenMarke = null; listeFehler = false;
+    geteilteListe = serverEintraege(d);
+    neuerEintrag = String(d.id);
+    knopf.textContent = 'Eingetragen';
+    hinweis.textContent = `Platz ${d.rang} von ${d.gesamt}.`;
+  } catch (f) {
+    const endgueltig = ['schon_eingetragen', 'zu_frueh', 'zu_alt', 'werte', 'marke'].includes(f.code);
+    hinweis.textContent = SERVER_HINWEISE[f.code] || 'Die Liste ist gerade nicht erreichbar. Versuch es gleich noch einmal.';
+    knopf.textContent = endgueltig ? 'Nicht eingetragen' : 'Noch einmal versuchen';
+    knopf.disabled = endgueltig;
+  }
+}
+function eintragPruefen(id, d) {
+  if (!d || typeof d.punkte !== 'number' || !isFinite(d.punkte)) return null;
+  return { id, name: String(d.name || 'Unbekannt').slice(0, 16), punkte: Math.round(d.punkte) };
+}
+function lokaleListe() {
+  try {
+    const roh = JSON.parse(speicherLesen('moorjagd.strecken') || '[]');
+    return Array.isArray(roh) ? roh.map(e => eintragPruefen(e.id, e)).filter(Boolean) : [];
+  } catch { return []; }
+}
+function listeZeigen() {
+  const geteilt = geteilteListe && !nurLesen;
+  const liste = (geteilteListe && !nurLesen ? geteilteListe : lokaleListe()).slice().sort((a, b) => b.punkte - a.punkte).slice(0, 10);
+  const quelle = geteilt ? 'Gemeinsame Liste für alle.' : listeFehler ? 'Die gemeinsame Liste ist gerade nicht erreichbar. Gezeigt wird dieses Gerät.' : 'Gespeichert auf diesem Gerät.';
+  for (const [ol, leer, q] of [['strecken', 'strecken-leer', 'strecken-quelle'], ['strecken-ende', 'strecken-ende-leer', 'strecken-ende-quelle']]) {
+    const o = $(ol); o.textContent = '';
+    liste.forEach((e, i) => {
+      const li = document.createElement('li');
+      li.className = 'eintrag' + (e.id === neuerEintrag ? ' neu' : '');
+      const nr = document.createElement('i'); nr.textContent = i + 1;
+      const na = document.createElement('span'); na.textContent = e.name;
+      const pu = document.createElement('b'); pu.textContent = e.punkte;
+      li.append(nr, na, pu); o.append(li);
+    });
+    $(leer).hidden = liste.length > 0;
+    $(q).textContent = quelle;
+  }
+}
+async function listeVerbinden() {
+  listeZeigen();
+  if (apiBasis) {
+    setInterval(() => { if (G.phase !== 'jagd' && !document.hidden) serverListeLaden(); }, 30000);
+    return serverListeLaden();
+  }
+  if (!window.claude || !window.claude.use) return;
+  const db = await window.claude.use('db');
+  if (!db) return;
+  datenbank = db;
+  const wecker = setTimeout(() => { listeFehler = true; listeZeigen(); }, 10000);
+  db.collection('strecken').orderBy('punkte', 'desc').limit(10).onSnapshot(s => {
+    if (!s.metadata.fromCache) { clearTimeout(wecker); listeFehler = false; }
+    geteilteListe = s.docs.map(d => eintragPruefen(d.id, d.data())).filter(Boolean);
+    listeZeigen();
+  }, () => {
+    clearTimeout(wecker); datenbank = null; geteilteListe = null; listeFehler = true; listeZeigen();
+  });
+}
+$('eintragen').addEventListener('submit', async e => {
+  e.preventDefault();
+  const knopf = $('eintragen-knopf');
+  if (knopf.disabled || G.punkte <= 0) return;
+  const name = $('name').value.trim().slice(0, 16) || 'Unbekannt';
+  speicherSchreiben('moorjagd.name', name);
+  knopf.disabled = true; knopf.textContent = 'Eingetragen';
+  const satz = { name, punkte: G.punkte, treffer: G.treffer, schuesse: G.schuesse, am: new Date().toISOString() };
+  const id = 'e' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+  // Eine Kopie bleibt auf dem Gerät, falls die gemeinsame Liste ausfällt; ein zweiter Versuch legt keine weitere an
+  if (!lokalGesichert) {
+    const lokal = lokaleListe();
+    lokal.push({ id, name, punkte: G.punkte });
+    lokal.sort((a, b) => b.punkte - a.punkte);
+    speicherSchreiben('moorjagd.strecken', JSON.stringify(lokal.slice(0, 20)));
+    lokalGesichert = true;
+    neuerEintrag = id;
+  }
+  $('eintragen-hinweis').textContent = '';
+  if (apiBasis) await serverEintragen(name);
+  else if (datenbank) {
+    try { await datenbank.collection('strecken').doc(id).set(satz); }
+    catch (f) {
+      nurLesen = true;
+      $('eintragen-hinweis').textContent = 'Nur auf diesem Gerät gespeichert, die gemeinsame Liste nimmt gerade nichts an.';
+    }
+  }
+  listeZeigen();
+});
+
+/* ---------- Mehrspieler: Räume und Runden über den eigenen Server (data-api) ---------- */
+// Der Server bestimmt Hühner, Verstecke, Ballon und wer zuerst trifft. Positionen kommen als Weltkoordinate X:
+// die Stelle der nahen Ebene, die in Bildmitte steht, wenn man genau auf das Ziel schaut.
+const FARBEN = ['#ff4b3a', '#4a90ff', '#ffd23f', '#4fd65e', '#c77dff', '#2fe0d0', '#ff7ac6', '#f4f1e6'];
+const FARBNAMEN = ['Rot', 'Blau', 'Gelb', 'Grün', 'Violett', 'Türkis', 'Rosa', 'Weiß'];
+const TEXT_FONT = '"Grenze", "Trebuchet MS", Verdana, sans-serif';
+const MP_FEHLER = {
+  zu_viele_raeume: 'Gerade sind zu viele Räume offen. Versuch es gleich noch einmal.',
+  zu_viele: 'Zu viele Versuche auf einmal. Warte kurz.',
+  raum_weg: 'Diesen Raum gibt es nicht mehr.',
+  raum_voll: 'Der Raum ist voll, mehr als acht Jäger passen nicht hinein.',
+};
+const MP = {
+  an: false, ws: null, ich: null, raum: null, raeume: [], anfrage: null, offset: null, start: 0, dauer: DAUER,
+  punkte: {}, andere: new Map(), ergebnis: null, ehrung: false, versuch: 0, wecker: 0, ping: 0,
+  zielZeit: 0, zielAlt: '', letzterTipp: null, letzterSchussWelt: null, countdownZahl: null, rast: false,
+};
+function imSpiel() { return G.phase === 'jagd' || G.phase === 'countdown'; }
+function mpJagd() { return G.modus === 'mehr' && imSpiel(); }
+function serverJetzt() { return performance.now() / 1000 - (MP.offset || 0); }
+function mpX(o, p, jetzt) { return sichtB / 2 + p * (o.X0 + o.V * (jetzt - o.u0) - sichtB / 2); }
+function jaegerVon(id) { return MP.raum ? MP.raum.jaeger.find(j => j.id === id) : null; }
+function farbeVon(id) { const j = jaegerVon(id); return j ? FARBEN[j.farbe] || '#fff6d6' : '#fff6d6'; }
+function mpSenden(d) { if (MP.ws && MP.ws.readyState === 1) MP.ws.send(JSON.stringify(d)); }
+function mpStatus(text) { $('mp-status').textContent = text; }
+function mpName() { return ($('mp-name').value || '').trim().slice(0, 16); }
+function mpNameNoetig() {
+  const n = mpName();
+  if (!n) { $('mp-name').focus(); mpStatus('Bitte gib zuerst deinen Namen ein.'); return null; }
+  speicherSchreiben('moorjagd.name', n);
+  return n;
+}
+let meldungWecker = 0;
+function meldung(text) {
+  const m = $('meldung');
+  m.textContent = text; m.hidden = false;
+  clearTimeout(meldungWecker); meldungWecker = setTimeout(() => { m.hidden = true; }, 4500);
+}
+function kreuzSymbol(farbe) {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('viewBox', '0 0 26 26'); s.setAttribute('class', 'kreuz'); s.setAttribute('aria-hidden', 'true');
+  const form = '<circle cx="13" cy="13" r="7.5"/><path d="M13 1v7M13 18v7M1 13h7M18 13h7"/>';
+  s.innerHTML = `<g fill="none"><g stroke="rgba(15,10,5,.8)" stroke-width="4">${form}</g><g stroke="${farbe}" stroke-width="2">${form}</g></g>`;
+  return s;
+}
+function el(tag, klasse, text) {
+  const e = document.createElement(tag);
+  if (klasse) e.className = klasse;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function knopf(text, klasse, tun) {
+  const b = el('button', klasse, text); b.type = 'button';
+  b.addEventListener('click', () => { tonStarten(); tun(); });
+  return b;
+}
+
+function mpStarten() {
+  tonStarten();
+  MP.an = true; G.modus = 'mehr';
+  $('mp-name').value = speicherLesen('moorjagd.name') || '';
+  mpZeigen();
+  if (!MP.ws) mpVerbinden();
+}
+function mpBeenden() {
+  mpSenden({ typ: 'zurueckziehen' });
+  MP.an = false;
+  clearTimeout(MP.wecker); clearInterval(MP.ping);
+  if (MP.ws) { const w = MP.ws; MP.ws = null; w.onclose = null; try { w.close(1000); } catch {} }
+  MP.raum = null; MP.anfrage = null; MP.ehrung = false;
+  G.modus = 'solo'; zumMenue();
+}
+function mpVerbinden() {
+  clearTimeout(MP.wecker);
+  let ws;
+  try {
+    const u = new URL(apiBasis + '/mehr', location.href);
+    u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(u);
+  } catch { mpStatus('Mehrspieler ist hier nicht verfügbar.'); return; }
+  MP.ws = ws;
+  mpStatus('Verbinde …');
+  ws.onopen = () => {
+    MP.versuch = 0; MP.offset = null;
+    let alt = null;
+    try { alt = sessionStorage.getItem('moorjagd.mp'); } catch {}
+    ws.send(JSON.stringify({ typ: 'hallo', name: mpName() || speicherLesen('moorjagd.name') || '', schluessel: alt || undefined }));
+    clearInterval(MP.ping);
+    MP.ping = setInterval(() => mpSenden({ typ: 'ping' }), 20000);
+  };
+  ws.onmessage = e => {
+    let d;
+    try { d = JSON.parse(e.data); } catch { return; }
+    if (d && typeof d === 'object') mpEmpfangen(d);
+  };
+  ws.onclose = () => {
+    if (MP.ws !== ws) return;
+    MP.ws = null; clearInterval(MP.ping);
+    if (!MP.an) return;
+    const warten = Math.min(10, 2 ** MP.versuch++);
+    mpStatus(`Verbindung unterbrochen. Neuer Versuch in ${warten} s …`);
+    if (MP.raum) meldung('Verbindung unterbrochen, verbinde neu …');
+    MP.wecker = setTimeout(mpVerbinden, warten * 1000);
+  };
+}
+function mpEmpfangen(d) {
+  // Uhrabgleich: die am schnellsten angekommene Nachricht gibt den Versatz vor
+  if (typeof d.u === 'number') { const o = performance.now() / 1000 - d.u; if (MP.offset === null || o < MP.offset) MP.offset = o; }
+  switch (d.typ) {
+    case 'willkommen':
+      if (MP.ich && MP.ich !== d.id) { MP.raum = null; MP.anfrage = null; MP.ehrung = false; if (mpJagd()) mpSpielAbbrechen(); }
+      MP.ich = d.id;
+      try { sessionStorage.setItem('moorjagd.mp', d.schluessel); } catch {}
+      mpStatus('');
+      break;
+    case 'raeume':
+      MP.raeume = Array.isArray(d.liste) ? d.liste : [];
+      if (MP.raum) { MP.raum = null; MP.ehrung = false; if (mpJagd()) mpSpielAbbrechen(); }
+      break;
+    case 'anfrage': MP.anfrage = d; break;
+    case 'abgelehnt':
+      MP.anfrage = null;
+      meldung(d.grund === 'aufgeloest' ? `Der Raum „${d.raum}“ wurde aufgelöst.` : `Der Oberjäger von „${d.raum}“ hat abgelehnt.`);
+      break;
+    case 'draussen':
+      MP.raum = null; MP.ehrung = false;
+      if (mpJagd()) mpSpielAbbrechen();
+      if (d.grund === 'rausgeworfen') meldung('Der Oberjäger hat dich aus dem Raum genommen.');
+      break;
+    case 'meldung': meldung(String(d.text || '')); break;
+    case 'fehler': meldung(MP_FEHLER[d.code] || 'Das hat nicht geklappt.'); break;
+    case 'raum': mpRaum(d); break;
+    case 'jagd': mpJagdStand(d); break;
+    case 'ende': mpEnde(d.ergebnis); break;
+    case 'huhn': if (mpJagd()) mpHuhn(d); return;
+    case 'ort': if (mpJagd()) mpOrt(d.i, d.halten, 0); return;
+    case 'ballon': if (mpJagd()) mpBallon(d); return;
+    case 'stand': if (mpJagd()) mpStand(d.z); return;
+    case 'schuss': if (mpJagd()) mpSchussErhalten(d); return;
+    case 'laden':
+      if (mpJagd() && zahl(d.summe)) {
+        MP.punkte[d.wer] = d.summe;
+        if (d.wer === MP.ich) { G.punkte = d.summe; punkteZeigen(); }
+        mpRanglisteZeigen();
+      }
+      return;
+    default: return;
+  }
+  mpZeigen();
+}
+function mpRaum(d) {
+  if (!Array.isArray(d.jaeger)) return;
+  const war = MP.raum;
+  if (!war) MP.anfrage = null;
+  // Neue Anfrage für den Oberjäger hörbar machen
+  if (war && d.oj === d.ich && d.anfragen.length > war.anfragen.length && !mpJagd()) tonGack(1);
+  MP.raum = d; MP.dauer = d.dauer || DAUER;
+  if (d.phase === 'countdown' && !mpJagd()) { MP.ehrung = false; mpRundeVorbereiten(d.start); }
+  mpRanglisteZeigen();
+}
+function mpRundeVorbereiten(start) {
+  tonStarten();
+  MP.rast = false;
+  MP.start = start; MP.punkte = {}; MP.andere.clear(); MP.countdownZahl = null; MP.zielZeit = 0; MP.letzterTipp = null;
+  Object.assign(G, { modus: 'mehr', phase: 'countdown', pausiert: false, punkte: 0, zeit: MP.dauer, munition: MAGAZIN, laden: 0, schuesse: 0, treffer: 0, kameraV: 0, kamera: kameraMax / 2, ballonPlan: [] });
+  G.strecke = { fern: 0, mittel: 0, nah: 0, versteckt: 0, ballon: 0, schild: 0, scheuche: 0, laden: 0 };
+  huehner.length = 0; federn.length = 0; texte.length = 0;
+  ballon = null; schilder = 3; scheucheWackeln = 0; scheucheSperre = 0;
+  for (const o of orte) Object.assign(o, { phase: 'warten', t: 5, hub: 0, halten: 0 });
+  letzteAnzeige = -1; leerHinweis = 0; mausDrin = false; letzterSchuss = null;
+  punkteZeigen(); patronenZeigen(); zeitZeigen();
+  $('countdown').textContent = ''; $('countdown').hidden = false;
+}
+function mpTakt(dt, jetzt) {
+  if (G.phase === 'countdown') {
+    const rest = MP.start - jetzt;
+    if (rest <= 0) { G.phase = 'jagd'; $('countdown').hidden = true; tonHorn(HORN_START); }
+    else {
+      const n = Math.max(0, Math.ceil(rest) - 1);
+      if (n !== MP.countdownZahl) {
+        MP.countdownZahl = n;
+        const c = $('countdown'); c.textContent = n; c.classList.toggle('null', n === 0);
+        n ? klang('square', 660, 660, .09, .1) : klang('square', 990, 990, .25, .12);
+      }
+    }
+  }
+  if (G.phase === 'jagd') G.zeit = Math.max(0, MP.start + MP.dauer - jetzt);
+  const k = Math.min(1, dt * 12);
+  for (const a of MP.andere.values()) { a.x += (a.zx - a.x) * k; a.y += (a.zy - a.y) * k; a.rueck = Math.max(0, a.rueck - dt * 7); }
+  // Eigenes Ziel etwa 15-mal je Sekunde melden, bei Stillstand alle 2 s
+  MP.zielZeit -= dt;
+  if (MP.zielZeit <= 0) {
+    const p = mausDrin && !fingerAktiv ? maus : MP.letzterTipp || { x: cssB / 2, y: cssH / 2 };
+    const d = { typ: 'ziel', x: Math.round(p.x / massstab + G.kamera), y: Math.round(p.y / massstab - obenY), c: Math.round(G.kamera + sichtB / 2), s: Math.round(sichtB) };
+    const schl = `${d.x},${d.y},${d.c}`;
+    if (schl !== MP.zielAlt || MP.zielZeit < -2) { mpSenden(d); MP.zielAlt = schl; MP.zielZeit = 1 / 15; }
+  }
+}
+function zahl(w) { return typeof w === 'number' && isFinite(w); }
+function mpHuhn(d) {
+  const l = LAGE[d.l];
+  if (!l || ![d.x, d.y, d.v, d.u0].every(zahl) || huehner.some(h => h.mp && h.id === d.id)) return;
+  const h = { mp: true, id: d.id, lage: d.l, X0: d.x, V: d.v, u0: d.u0, x: 0, y: d.y, v: d.v * l.p,
+    schlag: Math.random() * 4, schlagTempo: zufall(9, 13), bogen: zufall(0, TAU), hub: zufall(4, 16) * (l.groesse / 80),
+    zustand: 'flug', vy: 0, dreh: 0, drehV: 0, alpha: 1, t: 0, richtung: d.v < 0 ? -1 : 1 };
+  h.x = mpX(h, l.p, serverJetzt());
+  huehner.push(h);
+}
+function mpOrt(i, halten, vergangen) {
+  const o = orte[i];
+  if (!o || !zahl(halten)) return;
+  o.halten = halten;
+  if (vergangen < .24) { o.phase = 'hoch'; o.hub = Math.max(0, vergangen / .24); }
+  else if (vergangen < .24 + halten) { o.phase = 'halten'; o.hub = 1; o.halten = halten - (vergangen - .24); }
+  else { o.phase = 'runter'; o.hub = Math.max(0, 1 - (vergangen - .24 - halten) / .22); }
+}
+function mpBallon(d) {
+  if (![d.x, d.y, d.v, d.u0].every(zahl)) return;
+  ballon = { mp: true, id: d.id, X0: d.x, V: d.v, u0: d.u0, x: 0, y: d.y, v: d.v * LAGE[0].p, platzt: false, vy: 0 };
+  ballon.x = mpX(ballon, LAGE[0].p, serverJetzt());
+}
+function mpStand(z) {
+  if (!Array.isArray(z)) return;
+  const da = new Set();
+  for (const [id, x, y] of z) {
+    if (id === MP.ich || !zahl(x) || !zahl(y)) continue;
+    da.add(id);
+    const a = MP.andere.get(id);
+    if (a) { a.zx = x; a.zy = y; } else MP.andere.set(id, { x, y, zx: x, zy: y, rueck: 0 });
+  }
+  for (const id of MP.andere.keys()) if (!da.has(id)) MP.andere.delete(id);
+}
+// Eigener Schuss: sofort zeigen, der Server entscheidet über die Punkte
+function mpSchuss(z, ux, uy) {
+  const wx = ux + G.kamera;
+  MP.letzterSchussWelt = { x: wx, y: uy };
+  let ziel;
+  if (z && z.art === 'huhn' && z.h.mp) { ziel = { art: 'huhn', id: z.h.id }; huhnFaellt(z.h); }
+  else if (z && z.art === 'ort') { ziel = { art: 'ort', i: orte.indexOf(z.o) }; ortFaellt(z.o); }
+  else if (z && z.art === 'ballon') { ziel = { art: 'ballon' }; ballonPlatzt(); }
+  else if (z && z.art === 'schild') ziel = { art: 'schild' };
+  else if (z && z.art === 'scheuche' && scheucheSperre <= 0) { scheucheSperre = 1; ziel = { art: 'scheuche' }; }
+  if (!z) rauchZeigen(ux, uy);
+  mpSenden({ typ: 'schuss', x: Math.round(wx), y: Math.round(uy), ziel });
+}
+function mpSchussErhalten(d) {
+  const ich = d.wer === MP.ich, farbe = farbeVon(d.wer);
+  if (!ich) {
+    const a = MP.andere.get(d.wer);
+    if (a) a.rueck = 1;
+    rauschen(.22, 'lowpass', 2400, .16, 0, 220);
+  }
+  if (ich && d.zuspaet && MP.letzterSchussWelt) textZeigen(1, MP.letzterSchussWelt.x, MP.letzterSchussWelt.y - 34, 'Schon weg!', '#fff6d6', 26);
+  if (!d.art || !zahl(d.punkte)) return;
+  if (zahl(d.summe)) MP.punkte[d.wer] = d.summe;
+  if (ich) { G.punkte = d.summe; punkteZeigen(); if (d.art !== 'scheuche') G.treffer++; }
+  const text = (d.punkte < 0 ? '−' : '+') + Math.abs(d.punkte);
+  if (d.art === 'huhn') {
+    const h = huehner.find(h => h.mp && h.id === d.id);
+    if (h) {
+      const l = LAGE[h.lage];
+      if (h.zustand === 'flug') huhnFaellt(h);
+      textZeigen(l.p, h.x, h.y - l.groesse * .5, text, farbe, 26 + l.groesse * .12);
+    }
+  } else if (d.art === 'ort') {
+    const o = orte[d.i];
+    if (o) {
+      const pos = ortPosition(Object.assign({}, o, { hub: 1 }));
+      if (o.hub > 0) ortFaellt(o);
+      textZeigen(LAGE[o.lage].p, pos.x, pos.y - 40, text, farbe, 44);
+    }
+  } else if (d.art === 'ballon') {
+    if (ballon && ballon.id === d.id) {
+      if (!ballon.platzt) ballonPlatzt();
+      textZeigen(LAGE[0].p, ballon.x, ballon.y - 40, text, farbe, 44);
+    }
+  } else if (d.art === 'schild') {
+    const sx = 300, sy = hoeheNah(300) + 14 - 156 + (zahl(d.schilder) ? d.schilder : 0) * 26;
+    schilder = zahl(d.schilder) ? d.schilder : Math.max(0, schilder - 1);
+    federn.push({ p: 1, x: sx, y: sy, vx: zufall(-40, 40), vy: -90, dreh: 0, drehV: zufall(-5, 5), t: 0, dauer: 1, g: 26, farbe: '#a07a46', grav: 620 });
+    textZeigen(1, sx, sy - 22, text, farbe, 38);
+    klang('square', 240, 90, .07, .22);
+  } else if (d.art === 'scheuche') {
+    const kx = 1250, ky = hoeheNah(1250) + 12 - 120;
+    scheucheWackeln = 1;
+    textZeigen(1, kx, ky - 72, text, farbe, 50);
+    textZeigen(1, kx, ky - 34, 'Die war unschuldig!', '#fff6d6', 26);
+    federnStreuen(1, kx, ky, 8, 1);
+    tonAua();
+  }
+  mpRanglisteZeigen();
+}
+// Einstieg mitten in eine laufende Runde (spät angenommen oder nach einem Verbindungsabriss)
+function mpJagdStand(d) {
+  if (!MP.raum || !zahl(d.start)) return;
+  MP.ehrung = false;
+  mpRundeVorbereiten(d.start);
+  if (serverJetzt() >= d.start) { G.phase = 'jagd'; $('countdown').hidden = true; }
+  MP.punkte = d.punkte && typeof d.punkte === 'object' ? d.punkte : {};
+  G.punkte = MP.punkte[MP.ich] || 0; punkteZeigen();
+  if (zahl(d.schilder)) schilder = d.schilder;
+  for (const h of d.huehner || []) mpHuhn(h);
+  for (const o of d.orte || []) mpOrt(o.i, o.halten, serverJetzt() - o.ab);
+  if (d.ballon) mpBallon(d.ballon);
+}
+function mpEnde(ergebnis) {
+  if (!Array.isArray(ergebnis)) return;
+  const warDabei = mpJagd();
+  MP.ergebnis = ergebnis; MP.ehrung = true; MP.rast = false;
+  G.phase = 'ende'; ballon = null; blitz = 0;
+  baueOrte();
+  if (!warDabei) return;
+  tonHorn(HORN_ENDE);
+  // Federregen in der Farbe des Siegers
+  if (!ruhig && ergebnis[0] && ergebnis[0].punkte > 0) {
+    const farbe = FARBEN[ergebnis[0].farbe] || '#ffd24a';
+    for (let i = 0; i < 46; i++) federn.push({ p: 1, x: G.kamera + zufall(0, sichtB), y: -obenY + zufall(-60, 120), vx: zufall(-30, 30), vy: zufall(10, 70), dreh: zufall(0, TAU), drehV: zufall(-4, 4), t: 0, dauer: zufall(2.2, 3.8), g: zufall(5, 9), farbe: i % 3 ? farbe : '#f6edd5' });
+  }
+}
+function mpSpielAbbrechen() {
+  G.phase = 'menue'; ballon = null; MP.rast = false;
+  MP.andere.clear();
+  baueOrte();
+}
+
+function mpZeigen() {
+  if (!MP.an) return;
+  if (mpJagd()) {
+    zeigeNur(MP.rast ? 'rast' : null);
+    $('countdown').hidden = MP.rast || G.phase !== 'countdown';
+    mpRanglisteZeigen();
+    return;
+  }
+  if (MP.raum && MP.ehrung && MP.ergebnis) { ehrungZeigen(); zeigeNur('ehrung'); }
+  else if (MP.raum) { raumZeigen(); zeigeNur('raum'); }
+  else { lobbyZeigen(); zeigeNur('lobby'); }
+}
+function lobbyZeigen() {
+  const ul = $('raeume'); ul.textContent = '';
+  for (const r of MP.raeume) {
+    const li = el('li'), text = el('div');
+    const lage = r.phase === 'jagd' ? `Runde läuft${r.rest != null ? `, noch ${r.rest} s` : ''}` : r.phase === 'countdown' ? 'Runde startet' : 'wartet auf Jäger';
+    text.append(el('span', 'name', r.name), el('small', '', `Oberjäger ${r.oj} · ${r.n} von ${r.max} Jägern · ${lage}`));
+    const angefragt = MP.anfrage && MP.anfrage.raum === r.id;
+    const b = knopf(angefragt ? 'Angefragt' : r.n >= r.max ? 'Voll' : 'Anfrage stellen', 'zweit klein', () => {
+      const name = mpNameNoetig();
+      if (name) mpSenden({ typ: 'anfragen', raum: r.id, name });
+    });
+    b.disabled = angefragt || r.n >= r.max;
+    li.append(text, b); ul.append(li);
+  }
+  $('raeume-leer').hidden = MP.raeume.length > 0;
+  const a = MP.anfrage;
+  $('anfrage-box').hidden = !a;
+  if (a) $('anfrage-text').textContent = `Du hast bei „${a.name}“ angefragt. ${a.oj} entscheidet als Oberjäger, ob du mitjagen darfst.`;
+}
+function raumZeigen() {
+  const r = MP.raum, oj = jaegerVon(r.oj), binOj = r.oj === MP.ich, ojName = oj ? oj.name : 'der Oberjäger';
+  $('raum-titel').textContent = r.name;
+  $('raum-unterzeile').textContent = binOj
+    ? (r.jaeger.length < 2 ? 'Du bist Oberjäger. Nimm Anfragen an oder starte allein.' : 'Du bist Oberjäger. Starte die Runde, sobald alle da sind.')
+    : `Oberjäger ist ${ojName}. Sobald alle da sind, startet ${ojName} die Runde.`;
+  $('raum-start').hidden = !binOj;
+  $('raum-start').disabled = r.phase !== 'warten';
+  $('raum-hinweis').textContent = r.phase === 'jagd' ? 'Gerade läuft eine Runde.' : '';
+  const ul = $('jaeger'); ul.textContent = '';
+  for (const j of r.jaeger) {
+    const li = el('li'), text = el('div'), name = el('span', 'name', j.name);
+    if (j.id === r.oj) name.append(el('span', 'marke', 'Oberjäger'));
+    if (j.weg) name.append(el('span', 'marke weg', 'Verbindung weg'));
+    text.append(name, el('small', '', (FARBNAMEN[j.farbe] || '') + (j.id === MP.ich ? ' · das bist du' : '')));
+    const rechts = el('div', 'knoepfchen');
+    if (binOj && j.id !== MP.ich) rechts.append(knopf('Rauswerfen', 'zweit klein', () => mpSenden({ typ: 'rauswerfen', spieler: j.id })));
+    li.append(kreuzSymbol(FARBEN[j.farbe] || '#fff'), text, rechts); ul.append(li);
+  }
+  $('anfragen-box').hidden = !binOj || !r.anfragen.length;
+  const ua = $('anfragen'); ua.textContent = '';
+  for (const a of binOj ? r.anfragen : []) {
+    const li = el('li'), rechts = el('div', 'knoepfchen');
+    const ja = knopf('Annehmen', 'auftakt klein', () => mpSenden({ typ: 'annehmen', spieler: a.id }));
+    ja.disabled = r.jaeger.length >= 8;
+    rechts.append(ja, knopf('Ablehnen', 'zweit klein', () => mpSenden({ typ: 'ablehnen', spieler: a.id })));
+    li.append(el('span', 'name', a.name), rechts); ua.append(li);
+  }
+}
+function ehrungZeigen() {
+  const e = MP.ergebnis, r = MP.raum, binOj = r.oj === MP.ich, oj = jaegerVon(r.oj);
+  const erster = e[0];
+  $('ehrung-titel').textContent = !erster || erster.punkte <= 0 ? 'Das Moor bleibt unbehelligt.' : `Waidmannsheil, ${erster.name}!`;
+  const zweiter = e[1], gleich = erster && zweiter && erster.punkte > 0 && zweiter.punkte === erster.punkte;
+  $('ehrung-unter').hidden = !gleich;
+  if (gleich) $('ehrung-unter').textContent = `Punktgleich mit ${zweiter.name}, ` + (erster.treffer !== zweiter.treffer ? 'entschieden haben die Treffer.'
+    : erster.schuesse !== zweiter.schuesse ? 'entschieden hat die Trefferquote.' : 'auf Schuss und Treffer gleichauf.');
+  const podest = $('podest'); podest.textContent = '';
+  for (const [rang, klasse] of [[1, 'p2'], [0, 'p1'], [2, 'p3']]) {
+    const j = e[rang], platz = el('div', 'platz ' + klasse);
+    if (j) {
+      platz.style.setProperty('--farbe', FARBEN[j.farbe] || '#fff');
+      if (rang === 0) {
+        const krone = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        krone.setAttribute('viewBox', '0 0 38 24'); krone.setAttribute('class', 'krone'); krone.setAttribute('aria-hidden', 'true');
+        krone.innerHTML = '<path d="M3 21 1 5l10 8 8-11 8 11 10-8-2 16z"/>';
+        platz.append(krone);
+      }
+      platz.append(kreuzSymbol(FARBEN[j.farbe] || '#fff'), el('span', 'name', j.name), el('span', 'pkt', j.punkte), el('div', 'sockel', rang + 1));
+    }
+    podest.append(platz);
+  }
+  const t = $('ehrung-tabelle'); t.textContent = '';
+  e.forEach((j, i) => {
+    const tr = el('tr', j.id === MP.ich ? 'ich' : '');
+    const name = el('td'), punkt = el('span', 'farbpunkt');
+    punkt.style.background = FARBEN[j.farbe] || '#fff';
+    name.append(punkt, j.name);
+    const quote = j.schuesse ? Math.round(j.treffer / j.schuesse * 100) : 0;
+    tr.append(el('td', '', `${i + 1}.`), name, el('td', '', `${j.treffer}/${j.schuesse} · ${quote} %`), el('td', '', j.punkte));
+    t.append(tr);
+  });
+  const ich = e.find(j => j.id === MP.ich), s = ich && ich.strecke;
+  $('ehrung-strecke-titel').hidden = !s;
+  if (s) {
+    // Der Server zählt Verstecke nur (15 bis 25 je Ort); ihre Punkte sind der Rest der Summe
+    const ohne = s.fern * 25 + s.mittel * 10 + s.nah * 5 + s.ballon * 50 + s.schild * 10 - s.scheuche * 25 - s.laden * LADEKOSTEN;
+    streckeZeigen($('ehrung-strecke'), { ...s, versteckt: { n: s.versteckt, p: ich.punkte - ohne } }, ich.treffer, ich.schuesse, ich.punkte);
+  } else $('ehrung-strecke').textContent = '';
+  $('ehrung-weiter').hidden = !binOj;
+  $('ehrung-weiter').disabled = r.phase !== 'warten';
+  const n = r.anfragen.length;
+  $('ehrung-hinweis').textContent = binOj ? (n ? `${n === 1 ? 'Eine Aufnahme-Anfrage wartet' : n + ' Aufnahme-Anfragen warten'} im Raum.` : '')
+    : `${oj ? oj.name : 'Der Oberjäger'} startet die nächste Runde.`;
+}
+function mpRanglisteZeigen() {
+  const ol = $('rangliste'); ol.textContent = '';
+  if (!MP.raum) return;
+  const reihe = MP.raum.jaeger.map(j => ({ j, p: MP.punkte[j.id] || 0 })).sort((a, b) => b.p - a.p);
+  for (const { j, p } of reihe) {
+    const li = el('li', j.id === MP.ich ? 'ich' : ''), punkt = el('i', 'farbpunkt');
+    punkt.style.background = FARBEN[j.farbe] || '#fff';
+    li.append(punkt, el('span', '', j.name), el('b', '', p));
+    ol.append(li);
+  }
+}
+
+// Rast im Mehrspieler: nichts hält an, die Tafel liegt nur über dem laufenden Spiel
+function mpRast(an) {
+  if (!mpJagd()) return;
+  MP.rast = an; mausDrin = false;
+  mpZeigen();
+  if (an) $('rast-weiter').focus({ preventScroll: true });
+}
+$('rast-weiter').addEventListener('click', () => mpRast(false));
+$('rast-verlassen').addEventListener('click', () => {
+  mpSenden({ typ: 'verlassen' });
+  MP.raum = null; MP.ehrung = false;
+  mpSpielAbbrechen();
+  mpZeigen();
+});
+$('mehr-knopf').addEventListener('click', mpStarten);
+$('lobby-zurueck').addEventListener('click', mpBeenden);
+$('raum-neu').addEventListener('submit', e => {
+  e.preventDefault(); tonStarten();
+  const name = mpNameNoetig();
+  if (name) mpSenden({ typ: 'raum_neu', name, raum: $('raum-name').value.trim() || undefined });
+});
+$('zurueckziehen').addEventListener('click', () => { mpSenden({ typ: 'zurueckziehen' }); MP.anfrage = null; mpZeigen(); });
+$('raum-start').addEventListener('click', () => { tonStarten(); mpSenden({ typ: 'start' }); });
+$('ehrung-weiter').addEventListener('click', () => { tonStarten(); mpSenden({ typ: 'start' }); });
+$('raum-verlassen').addEventListener('click', () => { mpSenden({ typ: 'verlassen' }); MP.raum = null; MP.ehrung = false; mpZeigen(); });
+$('ehrung-raum').addEventListener('click', () => { MP.ehrung = false; mpZeigen(); });
+if (apiBasis && 'WebSocket' in window) $('mehr-knopf').hidden = false;
+
+/* ---------- Start ---------- */
+function starten(alt) {
+  patronenBauen(); tonAnzeigen();
+  groesseAnpassen();
+  patronenZeigen();
+  let warten = 0;
+  new ResizeObserver(() => { clearTimeout(warten); warten = setTimeout(groesseAnpassen, 120); }).observe(box);
+  addEventListener('resize', () => { clearTimeout(warten); warten = setTimeout(groesseAnpassen, 120); });
+  listeVerbinden();
+  // Nach einem Seiten-Update die laufende Runde als Pause wiederherstellen
+  if (alt && alt.phase === 'jagd') {
+    Object.assign(G, { phase: 'jagd', punkte: alt.punkte, zeit: alt.zeit, munition: alt.munition, schuesse: alt.schuesse, treffer: alt.treffer, strecke: alt.strecke, kamera: alt.kamera, ballonPlan: alt.ballonPlan || [] });
+    punkteZeigen(); patronenZeigen(); letzteAnzeige = -1; zeitZeigen();
+    G.pausiert = false; zeigeNur(null); pausieren();
+  }
+  if (location.hash === '#pruefung') window.__moorjagd = { G, MP, huehner, orte, get massstab() { return massstab; }, get obenY() { return obenY; }, LAGE, aktualisieren };
+  requestAnimationFrame(t => { zuletzt = t; schleife(t); });
+}
+const heiss = window.claude && window.claude.hot;
+if (heiss && heiss.snapshot) heiss.snapshot(() => ({ phase: G.phase, punkte: G.punkte, zeit: G.zeit, munition: G.munition, schuesse: G.schuesse, treffer: G.treffer, strecke: G.strecke, kamera: G.kamera, ballonPlan: G.ballonPlan }));
+if (heiss && heiss.ready) heiss.ready(starten); else starten((heiss && heiss.data) || {});
+</script>
